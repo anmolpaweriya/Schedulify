@@ -47,6 +47,37 @@ const Dashboard = () => {
   const { user, logout, updateProfile } = useAuth();
   const navigate = useNavigate();
 
+  const getRoleContext = () => {
+    if (user?.role === 'Admin') return { label: 'SaaS Administrator Hub', desc: 'Manage system-wide departments, configurations, and user lists.', type: 'admin' };
+    
+    // Customer roles
+    if (user?.role === 'Customer') {
+      if (user.dob || user.age || user.gender) {
+        return { label: 'Patient Portal Dashboard', desc: 'Schedule health appointments, view prescriptions, and sync consultation logs.', type: 'patient' };
+      }
+      if (user.program || user.registrationNo) {
+        return { label: 'Student Academic Dashboard', desc: 'Sync advising sessions, consult department faculty, and manage syllabus syncs.', type: 'student' };
+      }
+      return { label: 'Client Consultancy Console', desc: 'Check advisory schedules and coordinate meeting alignments.', type: 'client' };
+    }
+
+    // Provider roles
+    if (user?.role === 'Provider') {
+      const deptCategory = user.department?.category || '';
+      if (deptCategory === 'Healthcare') {
+        return { label: 'Clinical Consultation Dashboard', desc: 'Review patient lists, diagnose details, and manage medical calendars.', type: 'doctor' };
+      }
+      if (deptCategory === 'Education') {
+        return { label: 'Academic Faculty Console', desc: 'Manage student advising hours, review syllabus consultations, and sync cohorts.', type: 'faculty' };
+      }
+      return { label: 'Advisory Management Console', desc: 'Schedule corporate bookings, coordinate slots, and review client alignments.', type: 'officer' };
+    }
+
+    return { label: 'Dashboard Hub', desc: 'Manage your active schedules.', type: 'default' };
+  };
+
+  const contextInfo = getRoleContext();
+
   // Navigation state
   const [activeTab, setActiveTab] = useState('overview'); // overview, appointments, calendar, availability, departments, admin-users, settings
 
@@ -556,7 +587,7 @@ const Dashboard = () => {
   const unreadNotificationsCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div className="dashboard-container" style={{ position: 'relative' }}>
+    <div className="dashboard-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
       
       {/* Dynamic Background Blurs */}
       <div className="bg-blobs">
@@ -565,48 +596,60 @@ const Dashboard = () => {
         <div className="blob blob-3"></div>
       </div>
 
-      {/* Sidebar Panel */}
-      <nav className="sidebar glass-panel">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '40px', paddingLeft: '10px' }}>
+      {/* Top Navbar Header */}
+      <nav className="glass-panel" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '15px 30px',
+        margin: '20px',
+        borderRadius: '20px',
+        position: 'sticky',
+        top: '20px',
+        zIndex: 100
+      }}>
+        {/* Left Side: Logo & Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <PixelCalendar size={28} color="#ea580c" />
           <span style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'Outfit' }}>Schedulify</span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+        {/* Center: Navigation buttons */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             onClick={() => setActiveTab('overview')}
             className={`btn-secondary ${activeTab === 'overview' ? 'active-tab' : ''}`}
             style={{
-              textAlign: 'left',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
-              padding: '12px 18px',
-              borderRadius: '15px',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: '12px',
               border: 'none',
               background: activeTab === 'overview' ? 'rgba(255,255,255,0.8)' : 'transparent',
               fontWeight: 600,
+              fontSize: '0.9rem'
             }}
           >
-            <PixelAnalytics size={18} color="#ea580c" /> Overview
+            <PixelAnalytics size={16} color="#ea580c" /> Overview
           </button>
 
           <button
             onClick={() => setActiveTab('appointments')}
             className={`btn-secondary ${activeTab === 'appointments' ? 'active-tab' : ''}`}
             style={{
-              textAlign: 'left',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
-              padding: '12px 18px',
-              borderRadius: '15px',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: '12px',
               border: 'none',
               background: activeTab === 'appointments' ? 'rgba(255,255,255,0.8)' : 'transparent',
               fontWeight: 600,
+              fontSize: '0.9rem'
             }}
           >
-            <PixelAppointment size={18} color="#ea580c" /> Appointments
+            <PixelAppointment size={16} color="#ea580c" /> Appointments
           </button>
 
           {user?.role === 'Customer' && (
@@ -614,17 +657,17 @@ const Dashboard = () => {
               to="/book"
               style={{
                 textDecoration: 'none',
-                textAlign: 'left',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
-                padding: '12px 18px',
-                borderRadius: '15px',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: '12px',
                 color: '#1c1c1e',
                 fontWeight: 600,
+                fontSize: '0.9rem'
               }}
             >
-              <PixelCalendar size={18} color="#ea580c" /> Book Appointment
+              <PixelCalendar size={16} color="#ea580c" /> Book Appointment
             </Link>
           )}
 
@@ -633,18 +676,18 @@ const Dashboard = () => {
               onClick={() => setActiveTab('availability')}
               className={`btn-secondary ${activeTab === 'availability' ? 'active-tab' : ''}`}
               style={{
-                textAlign: 'left',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
-                padding: '12px 18px',
-                borderRadius: '15px',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: '12px',
                 border: 'none',
                 background: activeTab === 'availability' ? 'rgba(255,255,255,0.8)' : 'transparent',
                 fontWeight: 600,
+                fontSize: '0.9rem'
               }}
             >
-              <PixelCalendar size={18} color="#ea580c" /> Availability Slots
+              <PixelCalendar size={16} color="#ea580c" /> Availability
             </button>
           )}
 
@@ -654,36 +697,36 @@ const Dashboard = () => {
                 onClick={() => setActiveTab('departments')}
                 className={`btn-secondary ${activeTab === 'departments' ? 'active-tab' : ''}`}
                 style={{
-                  textAlign: 'left',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 18px',
-                  borderRadius: '15px',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  borderRadius: '12px',
                   border: 'none',
                   background: activeTab === 'departments' ? 'rgba(255,255,255,0.8)' : 'transparent',
                   fontWeight: 600,
+                  fontSize: '0.9rem'
                 }}
               >
-                <PixelUniversity size={18} color="#ea580c" /> Departments
+                <PixelUniversity size={16} color="#ea580c" /> Departments
               </button>
 
               <button
                 onClick={() => setActiveTab('admin-users')}
                 className={`btn-secondary ${activeTab === 'admin-users' ? 'active-tab' : ''}`}
                 style={{
-                  textAlign: 'left',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 18px',
-                  borderRadius: '15px',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  borderRadius: '12px',
                   border: 'none',
                   background: activeTab === 'admin-users' ? 'rgba(255,255,255,0.8)' : 'transparent',
                   fontWeight: 600,
+                  fontSize: '0.9rem'
                 }}
               >
-                <PixelUser size={18} color="#ea580c" /> Manage Users
+                <PixelUser size={16} color="#ea580c" /> Users
               </button>
             </>
           )}
@@ -692,18 +735,18 @@ const Dashboard = () => {
             onClick={() => setActiveTab('settings')}
             className={`btn-secondary ${activeTab === 'settings' ? 'active-tab' : ''}`}
             style={{
-              textAlign: 'left',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
-              padding: '12px 18px',
-              borderRadius: '15px',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: '12px',
               border: 'none',
               background: activeTab === 'settings' ? 'rgba(255,255,255,0.8)' : 'transparent',
               fontWeight: 600,
+              fontSize: '0.9rem'
             }}
           >
-            <PixelSettings size={18} color="#ea580c" /> My Profile
+            <PixelSettings size={16} color="#ea580c" /> Profile
           </button>
 
           {user?.role === 'Admin' && (
@@ -711,25 +754,26 @@ const Dashboard = () => {
               onClick={() => setActiveTab('saas-config')}
               className={`btn-secondary ${activeTab === 'saas-config' ? 'active-tab' : ''}`}
               style={{
-                textAlign: 'left',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
-                padding: '12px 18px',
-                borderRadius: '15px',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: '12px',
                 border: 'none',
                 background: activeTab === 'saas-config' ? 'rgba(255,255,255,0.8)' : 'transparent',
                 fontWeight: 600,
+                fontSize: '0.9rem'
               }}
             >
-              <PixelSettings size={18} color="#ea580c" /> SaaS Configuration
+              <PixelSettings size={16} color="#ea580c" /> Config
             </button>
           )}
         </div>
 
-        <div style={{ marginTop: 'auto', borderTop: '1px solid var(--glass-border)', paddingTop: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+        {/* Right Side: Profile Info & Log Out */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
               {user?.avatar ? (
                 <img src={user.avatar.startsWith('/') ? `${axios.defaults.baseURL}${user.avatar}` : user.avatar} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
               ) : (
@@ -737,11 +781,11 @@ const Dashboard = () => {
               )}
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{user?.name}</div>
-              <div style={{ fontSize: '0.75rem', color: '#636366' }}>{user?.role}</div>
+              <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{user?.name}</div>
+              <div style={{ fontSize: '0.7rem', color: '#636366' }}>{user?.role}</div>
             </div>
           </div>
-          <button onClick={handleLogout} className="btn-secondary" style={{ width: '100%', border: 'none', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+          <button onClick={handleLogout} className="btn-secondary" style={{ border: 'none', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '6px 12px', borderRadius: '10px', fontSize: '0.85rem' }}>
             Log Out
           </button>
         </div>
@@ -754,10 +798,10 @@ const Dashboard = () => {
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
           <div>
             <h1 style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'Outfit' }}>
-              Hello, {user?.name}
+              {contextInfo.label}
             </h1>
             <p style={{ color: '#636366' }}>
-              {user?.role === 'Provider' ? `${user.title || ''} Provider Account` : 'Manage your upcoming bookings.'}
+              Welcome back, {user?.name}. {contextInfo.desc}
             </p>
           </div>
 
@@ -871,7 +915,16 @@ const Dashboard = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '25px', marginBottom: '40px' }}>
                 <div className="glass-card" style={{ background: '#e0f2fe' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#0369a1', fontWeight: 600 }}>Total Bookings</span>
+                    <span style={{ color: '#0369a1', fontWeight: 600 }}>
+                      {contextInfo.type === 'patient' && 'Total Consultations'}
+                      {contextInfo.type === 'doctor' && 'Total Patients Seen'}
+                      {contextInfo.type === 'student' && 'Total Advising Syncs'}
+                      {contextInfo.type === 'faculty' && 'Active Mapped Students'}
+                      {contextInfo.type === 'client' && 'Consultations Booked'}
+                      {contextInfo.type === 'officer' && 'Managed Alignments'}
+                      {contextInfo.type === 'admin' && 'System-wide Bookings'}
+                      {contextInfo.type === 'default' && 'Total Bookings'}
+                    </span>
                     <PixelAppointment size={20} color="#0369a1" />
                   </div>
                   <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '15px' }}>{analytics?.summary?.total || 0}</h2>
@@ -879,7 +932,16 @@ const Dashboard = () => {
 
                 <div className="glass-card" style={{ background: '#fef9c3' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#a16207', fontWeight: 600 }}>Pending Actions</span>
+                    <span style={{ color: '#a16207', fontWeight: 600 }}>
+                      {contextInfo.type === 'patient' && 'Awaiting Doctor Approval'}
+                      {contextInfo.type === 'doctor' && 'Pending Clinic Appointments'}
+                      {contextInfo.type === 'student' && 'Awaiting Coordinator Sync'}
+                      {contextInfo.type === 'faculty' && 'Pending Advising Slots'}
+                      {contextInfo.type === 'client' && 'Pending Alignments'}
+                      {contextInfo.type === 'officer' && 'Pending Registrations'}
+                      {contextInfo.type === 'admin' && 'Pending Provider Actions'}
+                      {contextInfo.type === 'default' && 'Pending Actions'}
+                    </span>
                     <PixelBell size={20} color="#a16207" />
                   </div>
                   <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '15px' }}>{analytics?.summary?.pending || 0}</h2>
@@ -887,7 +949,16 @@ const Dashboard = () => {
 
                 <div className="glass-card" style={{ background: '#dcfce7' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#15803d', fontWeight: 600 }}>Approved Sessions</span>
+                    <span style={{ color: '#15803d', fontWeight: 600 }}>
+                      {contextInfo.type === 'patient' && 'Confirmed Bookings'}
+                      {contextInfo.type === 'doctor' && 'Approved Appointments'}
+                      {contextInfo.type === 'student' && 'Confirmed Syncs'}
+                      {contextInfo.type === 'faculty' && 'Faculty Consultations'}
+                      {contextInfo.type === 'client' && 'Approved Sessions'}
+                      {contextInfo.type === 'officer' && 'Confirmed Sessions'}
+                      {contextInfo.type === 'admin' && 'Approved System-wide'}
+                      {contextInfo.type === 'default' && 'Approved Sessions'}
+                    </span>
                     <PixelCalendar size={20} color="#15803d" />
                   </div>
                   <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '15px' }}>{analytics?.summary?.approved || 0}</h2>
@@ -895,7 +966,16 @@ const Dashboard = () => {
 
                 <div className="glass-card" style={{ background: '#f3e8ff' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#6b21a8', fontWeight: 600 }}>Completed</span>
+                    <span style={{ color: '#6b21a8', fontWeight: 600 }}>
+                      {contextInfo.type === 'patient' && 'Prescriptions Issued'}
+                      {contextInfo.type === 'doctor' && 'Completed Visits'}
+                      {contextInfo.type === 'student' && 'Meetings Attended'}
+                      {contextInfo.type === 'faculty' && 'Cohorts Completed'}
+                      {contextInfo.type === 'client' && 'Completed Advisory'}
+                      {contextInfo.type === 'officer' && 'Completed Alignments'}
+                      {contextInfo.type === 'admin' && 'Completed Bookings'}
+                      {contextInfo.type === 'default' && 'Completed'}
+                    </span>
                     <PixelUser size={20} color="#6b21a8" />
                   </div>
                   <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '15px' }}>{analytics?.summary?.completed || 0}</h2>

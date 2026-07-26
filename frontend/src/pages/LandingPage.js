@@ -33,7 +33,16 @@ const LandingPage = () => {
   };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+    <div style={{
+      backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.8)), url("/workspace_bg.jpg")',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed',
+      minHeight: '100vh',
+      paddingBottom: '80px',
+      paddingTop: '20px'
+    }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
       {/* Header / Navbar */}
       <motion.nav
         className="navbar glass-panel"
@@ -279,6 +288,7 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
+      </div>
     </div>
   );
 };
