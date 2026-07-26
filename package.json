@@ -1,0 +1,19 @@
+{
+  "name": "appointment-scheduler",
+  "version": "1.0.0",
+  "description": "Appointment Scheduler SaaS Platform",
+  "scripts": {
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "backend": "cd backend && npm start",
+    "backend-dev": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm start",
+    "dev": "concurrently \"npm run backend-dev\" \"npm run frontend\"",
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "concurrently": "^8.2.2",
+    "dotenv": "^17.4.2",
+    "mongoose": "^9.8.0"
+  }
+}
