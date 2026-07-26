@@ -52,6 +52,39 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    address: {
+      type: String,
+      default: '',
+    },
+    dob: {
+      type: String,
+      default: '',
+    },
+    age: {
+      type: Number,
+      default: null,
+    },
+    gender: {
+      type: String,
+      enum: ['', 'Male', 'Female', 'Other'],
+      default: '',
+    },
+    program: {
+      type: String,
+      default: '',
+    },
+    section: {
+      type: String,
+      default: '',
+    },
+    registrationNo: {
+      type: String,
+      default: '',
+    },
+    professionalId: {
+      type: String,
+      default: '',
+    },
     status: {
       type: String,
       enum: ['Pending', 'Approved', 'Rejected'],

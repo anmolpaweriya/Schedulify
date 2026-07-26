@@ -214,7 +214,7 @@ const LandingPage = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
           <div className="glass-card" style={{ padding: '40px 30px' }}>
             <h3 style={{ fontSize: '1.6rem', fontWeight: 700 }}>Free Tier</h3>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '20px 0' }}>$0</div>
+            <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '20px 0' }}>₹0</div>
             <p style={{ color: '#636366', marginBottom: '25px' }}>For single freelancers or self-employed professionals.</p>
             <ul style={{ listStyle: 'none', padding: 0, textAlign: 'left', marginBottom: '30px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <li>✓ 1 Provider Account</li>
@@ -227,7 +227,7 @@ const LandingPage = () => {
           <div className="glass-card" style={{ padding: '40px 30px', border: '2px solid #ea580c', transform: 'scale(1.03)', background: 'rgba(255,255,255,0.7)' }}>
             <span style={{ background: '#ea580c', color: '#fff', padding: '4px 12px', borderRadius: '15px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Popular</span>
             <h3 style={{ fontSize: '1.6rem', fontWeight: 700, marginTop: '10px' }}>Pro Schedule</h3>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '20px 0' }}>$29<span style={{ fontSize: '1rem', fontWeight: 400 }}>/mo</span></div>
+            <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '20px 0' }}>₹2,499<span style={{ fontSize: '1rem', fontWeight: 400 }}>/mo</span></div>
             <p style={{ color: '#636366', marginBottom: '25px' }}>Perfect for hospitals, corporate offices, and law groups.</p>
             <ul style={{ listStyle: 'none', padding: 0, textAlign: 'left', marginBottom: '30px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <li>✓ 15 Provider Accounts</li>
@@ -240,7 +240,7 @@ const LandingPage = () => {
 
           <div className="glass-card" style={{ padding: '40px 30px' }}>
             <h3 style={{ fontSize: '1.6rem', fontWeight: 700 }}>Enterprise</h3>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '20px 0' }}>$99<span style={{ fontSize: '1rem', fontWeight: 400 }}>/mo</span></div>
+            <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '20px 0' }}>₹7,999<span style={{ fontSize: '1rem', fontWeight: 400 }}>/mo</span></div>
             <p style={{ color: '#636366', marginBottom: '25px' }}>For large-scale universities and hospitals.</p>
             <ul style={{ listStyle: 'none', padding: 0, textAlign: 'left', marginBottom: '30px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <li>✓ Unlimited Providers & Depts</li>

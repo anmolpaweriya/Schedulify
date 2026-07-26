@@ -91,11 +91,35 @@ const Dashboard = () => {
   const [blockedDatesStr, setBlockedDatesStr] = useState('');
 
   // Profile Form States
-  const [profName, setProfName] = useState(user?.name || '');
-  const [profTitle, setProfTitle] = useState(user?.title || '');
-  const [profSpec, setProfSpec] = useState(user?.specialization || '');
-  const [profBio, setProfBio] = useState(user?.bio || '');
-  const [profDept, setProfDept] = useState(user?.department?._id || user?.department || '');
+  const [profName, setProfName] = useState('');
+  const [profTitle, setProfTitle] = useState('');
+  const [profSpec, setProfSpec] = useState('');
+  const [profBio, setProfBio] = useState('');
+  const [profDept, setProfDept] = useState('');
+  const [profAddress, setProfAddress] = useState('');
+  const [profDob, setProfDob] = useState('');
+  const [profAge, setProfAge] = useState('');
+  const [profGender, setProfGender] = useState('');
+  const [profProgram, setProfProgram] = useState('');
+  const [profSection, setProfSection] = useState('');
+  const [profRegistrationNo, setProfRegistrationNo] = useState('');
+  const [profProfessionalId, setProfProfessionalId] = useState('');
+  const [avatarFile, setAvatarFile] = useState(null);
+
+  // Admin Editing User States
+  const [editingUser, setEditingUser] = useState(null);
+  const [editUserName, setEditUserName] = useState('');
+  const [editUserRole, setEditUserRole] = useState('Customer');
+  const [editUserStatus, setEditUserStatus] = useState('Approved');
+  const [editUserDepartment, setEditUserDepartment] = useState('');
+  const [editUserAddress, setEditUserAddress] = useState('');
+  const [editUserDob, setEditUserDob] = useState('');
+  const [editUserAge, setEditUserAge] = useState('');
+  const [editUserGender, setEditUserGender] = useState('');
+  const [editUserProgram, setEditUserProgram] = useState('');
+  const [editUserSection, setEditUserSection] = useState('');
+  const [editUserRegistrationNo, setEditUserRegistrationNo] = useState('');
+  const [editUserProfessionalId, setEditUserProfessionalId] = useState('');
 
   // Fetch initial analytics, notifications, appointments
   const fetchData = async () => {
@@ -183,6 +207,21 @@ const Dashboard = () => {
   useEffect(() => {
     if (user) {
       fetchData();
+      
+      // Populate profile states
+      setProfName(user.name || '');
+      setProfTitle(user.title || '');
+      setProfSpec(user.specialization || '');
+      setProfBio(user.bio || '');
+      setProfDept(user.department?._id || user.department || '');
+      setProfAddress(user.address || '');
+      setProfDob(user.dob || '');
+      setProfAge(user.age || '');
+      setProfGender(user.gender || '');
+      setProfProgram(user.program || '');
+      setProfSection(user.section || '');
+      setProfRegistrationNo(user.registrationNo || '');
+      setProfProfessionalId(user.professionalId || '');
     } else {
       navigate('/login');
     }
@@ -233,16 +272,85 @@ const Dashboard = () => {
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     try {
-      await updateProfile({
-        name: profName,
-        title: profTitle,
-        specialization: profSpec,
-        bio: profBio,
-        department: profDept,
-      });
+      const fd = new FormData();
+      fd.append('name', profName);
+      fd.append('title', profTitle);
+      fd.append('specialization', profSpec);
+      fd.append('bio', profBio);
+      fd.append('department', profDept);
+      fd.append('address', profAddress);
+      fd.append('dob', profDob);
+      fd.append('age', profAge);
+      fd.append('gender', profGender);
+      fd.append('program', profProgram);
+      fd.append('section', profSection);
+      fd.append('registrationNo', profRegistrationNo);
+      fd.append('professionalId', profProfessionalId);
+      if (avatarFile) {
+        fd.append('avatar', avatarFile);
+      }
+
+      await updateProfile(fd);
       toast.success('Profile details updated successfully');
     } catch (err) {
       toast.error(err.message || 'Failed to update profile');
+    }
+  };
+
+  // Admin user edit setups
+  const handleEditUser = (u) => {
+    setEditingUser(u);
+    setEditUserName(u.name || '');
+    setEditUserRole(u.role || 'Customer');
+    setEditUserStatus(u.status || 'Approved');
+    setEditUserDepartment(u.department?._id || u.department || '');
+    setEditUserAddress(u.address || '');
+    setEditUserDob(u.dob || '');
+    setEditUserAge(u.age || '');
+    setEditUserGender(u.gender || '');
+    setEditUserProgram(u.program || '');
+    setEditUserSection(u.section || '');
+    setEditUserRegistrationNo(u.registrationNo || '');
+    setEditUserProfessionalId(u.professionalId || '');
+  };
+
+  const handleEditUserSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.put(`/api/admin/users/${editingUser._id}`, {
+        name: editUserName,
+        role: editUserRole,
+        status: editUserStatus,
+        department: editUserDepartment || null,
+        address: editUserAddress,
+        dob: editUserDob,
+        age: editUserAge ? parseInt(editUserAge) : null,
+        gender: editUserGender,
+        program: editUserProgram,
+        section: editUserSection,
+        registrationNo: editUserRegistrationNo,
+        professionalId: editUserProfessionalId,
+      });
+      if (res.data.success) {
+        toast.success('User updated successfully');
+        setEditingUser(null);
+        fetchData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update user');
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    try {
+      const res = await axios.delete(`/api/admin/users/${id}`);
+      if (res.data.success) {
+        toast.success('User deleted successfully');
+        fetchData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete user');
     }
   };
 
@@ -597,6 +705,26 @@ const Dashboard = () => {
           >
             <PixelSettings size={18} color="#ea580c" /> My Profile
           </button>
+
+          {user?.role === 'Admin' && (
+            <button
+              onClick={() => setActiveTab('saas-config')}
+              className={`btn-secondary ${activeTab === 'saas-config' ? 'active-tab' : ''}`}
+              style={{
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 18px',
+                borderRadius: '15px',
+                border: 'none',
+                background: activeTab === 'saas-config' ? 'rgba(255,255,255,0.8)' : 'transparent',
+                fontWeight: 600,
+              }}
+            >
+              <PixelSettings size={18} color="#ea580c" /> SaaS Configuration
+            </button>
+          )}
         </div>
 
         <div style={{ marginTop: 'auto', borderTop: '1px solid var(--glass-border)', paddingTop: '20px' }}>
@@ -1035,10 +1163,21 @@ const Dashboard = () => {
                     <div key={u._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.7)', padding: '15px 25px', borderRadius: '15px' }}>
                       <div>
                         <div style={{ fontWeight: 700 }}>{u.name}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#636366' }}>{u.email} • Role: <strong>{u.role}</strong> {u.role === 'Provider' && `• Status: ${u.status}`}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#636366' }}>
+                          {u.email} • Role: <strong>{u.role}</strong> {u.role === 'Provider' && `• Status: ${u.status}`}
+                        </div>
+                        {u.address && <div style={{ fontSize: '0.75rem', color: '#8e8e93', marginTop: '3px' }}>Address: {u.address}</div>}
+                        {(u.dob || u.registrationNo || u.professionalId) && (
+                          <div style={{ fontSize: '0.75rem', color: '#ea580c', marginTop: '3px' }}>
+                            {u.dob && `DOB: ${u.dob} • `}
+                            {u.registrationNo && `Reg No: ${u.registrationNo} • `}
+                            {u.professionalId && `ID: ${u.professionalId}`}
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: '10px' }}>
-                        {/* Custom actions (e.g. Promote, Suspend or Delete) could be here */}
+                        <button onClick={() => handleEditUser(u)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>Edit</button>
+                        <button onClick={() => handleDeleteUser(u._id)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.8rem', color: '#ef4444', background: 'rgba(239,68,68,0.1)', border: 'none' }}>Delete</button>
                       </div>
                     </div>
                   ))}
@@ -1049,92 +1188,156 @@ const Dashboard = () => {
 
           {activeTab === 'settings' && (
             <motion.div key="settings" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '30px' }}>
-                
-                {/* Profile update form */}
-                <div className="glass-card">
-                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px' }}>Update Profile Details</h3>
-                  <form onSubmit={handleProfileUpdate}>
+              <div className="glass-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px' }}>Update Profile Details</h3>
+                <form onSubmit={handleProfileUpdate}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                     <div className="form-group">
                       <label className="form-label">Full Name</label>
                       <input type="text" className="form-control" value={profName} onChange={(e) => setProfName(e.target.value)} required />
                     </div>
 
-                    {user?.role === 'Provider' && (
-                      <>
-                        <div className="form-group">
-                          <label className="form-label">Professional Title</label>
-                          <input type="text" className="form-control" value={profTitle} onChange={(e) => setProfTitle(e.target.value)} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Specialization</label>
-                          <input type="text" className="form-control" value={profSpec} onChange={(e) => setProfSpec(e.target.value)} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Biography</label>
-                          <textarea className="form-control" value={profBio} onChange={(e) => setProfBio(e.target.value)} rows={3} style={{ resize: 'none' }} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Department</label>
-                          <select className="form-control" value={profDept} onChange={(e) => setProfDept(e.target.value)}>
-                            {departments.map((dept) => (
-                              <option key={dept._id} value={dept._id}>
-                                {dept.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </>
-                    )}
-
-                    <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>
-                      Save Profile
-                    </button>
-                  </form>
-                </div>
-
-                {/* SaaS SMTP Server Settings (Admin only) */}
-                {user?.role === 'Admin' && (
-                  <div className="glass-card">
-                    <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px' }}>SaaS Admin Configuration</h3>
-                    <form onSubmit={handleSaveSettings}>
-                      <div className="form-group">
-                        <label className="form-label">SMTP Server Host</label>
-                        <input type="text" className="form-control" placeholder="e.g. smtp.mailgun.org" value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">SMTP Port</label>
-                        <input type="number" className="form-control" value={smtpPort} onChange={(e) => setSmtpPort(parseInt(e.target.value))} />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">SMTP Username</label>
-                        <input type="text" className="form-control" value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">SMTP Password</label>
-                        <input type="password" className="form-control" value={smtpPass} onChange={(e) => setSmtpPass(e.target.value)} />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Sender Email Address (From)</label>
-                        <input type="text" className="form-control" value={smtpFrom} onChange={(e) => setSmtpFrom(e.target.value)} />
-                      </div>
-
-                      <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '20px' }}>
-                        <input type="checkbox" checked={requireApprove} onChange={(e) => setRequireApprove(e.target.checked)} style={{ width: '20px', height: '20px' }} />
-                        <label className="form-label" style={{ marginBottom: 0 }}>Require Admin Provider Approval</label>
-                      </div>
-
-                      <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <input type="checkbox" checked={requireVerify} onChange={(e) => setRequireVerify(e.target.checked)} style={{ width: '20px', height: '20px' }} />
-                        <label className="form-label" style={{ marginBottom: 0 }}>Require Customer Email Verification</label>
-                      </div>
-
-                      <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '10px' }}>
-                        Save Platform Settings
-                      </button>
-                    </form>
+                    <div className="form-group">
+                      <label className="form-label">Profile Image (Avatar)</label>
+                      <input type="file" className="form-control" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} />
+                    </div>
                   </div>
-                )}
+
+                  <div className="form-group">
+                    <label className="form-label">Street Address</label>
+                    <input type="text" className="form-control" placeholder="e.g. 123 Metro Lane, New Delhi" value={profAddress} onChange={(e) => setProfAddress(e.target.value)} />
+                  </div>
+
+                  {/* Context-based hospital fields (Healthcare department or Patient/Doctor role) */}
+                  <h4 style={{ margin: '25px 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.1rem', fontWeight: 700 }}>
+                    Demographics (Healthcare / General)
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                    <div className="form-group">
+                      <label className="form-label">Date of Birth</label>
+                      <input type="date" className="form-control" value={profDob} onChange={(e) => setProfDob(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Age</label>
+                      <input type="number" className="form-control" placeholder="Years" value={profAge} onChange={(e) => setProfAge(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Gender</label>
+                      <select className="form-control" value={profGender} onChange={(e) => setProfGender(e.target.value)}>
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Context-based University fields */}
+                  <h4 style={{ margin: '25px 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.1rem', fontWeight: 700 }}>
+                    University / College Specifications
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.5fr', gap: '20px' }}>
+                    <div className="form-group">
+                      <label className="form-label">Academic Program</label>
+                      <input type="text" className="form-control" placeholder="e.g. B.Tech Computer Science" value={profProgram} onChange={(e) => setProfProgram(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Section / Batch</label>
+                      <input type="text" className="form-control" placeholder="e.g. Section A" value={profSection} onChange={(e) => setProfSection(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Registration / Roll No</label>
+                      <input type="text" className="form-control" placeholder="e.g. 2026-REG-0982" value={profRegistrationNo} onChange={(e) => setProfRegistrationNo(e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Staff ID details */}
+                  <h4 style={{ margin: '25px 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.1rem', fontWeight: 700 }}>
+                    Professional ID / Staff Card
+                  </h4>
+                  <div className="form-group">
+                    <label className="form-label">Faculty Employee / Doctor License ID</label>
+                    <input type="text" className="form-control" placeholder="e.g. DOC-8374-IN or FAC-CS-928" value={profProfessionalId} onChange={(e) => setProfProfessionalId(e.target.value)} />
+                  </div>
+
+                  {user?.role === 'Provider' && (
+                    <>
+                      <h4 style={{ margin: '25px 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.1rem', fontWeight: 700 }}>
+                        Provider Profile Details
+                      </h4>
+                      <div className="form-group">
+                        <label className="form-label">Professional Title</label>
+                        <input type="text" className="form-control" value={profTitle} onChange={(e) => setProfTitle(e.target.value)} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Specialization</label>
+                        <input type="text" className="form-control" value={profSpec} onChange={(e) => setProfSpec(e.target.value)} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Biography</label>
+                        <textarea className="form-control" value={profBio} onChange={(e) => setProfBio(e.target.value)} rows={3} style={{ resize: 'none' }} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Department</label>
+                        <select className="form-control" value={profDept} onChange={(e) => setProfDept(e.target.value)}>
+                          {departments.map((dept) => (
+                            <option key={dept._id} value={dept._id}>
+                              {dept.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  <button type="submit" className="btn-primary" style={{ marginTop: '20px', width: '100%', padding: '14px' }}>
+                    Save Profile Details
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'saas-config' && user?.role === 'Admin' && (
+            <motion.div key="saas-config" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}>
+              <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px' }}>SaaS Admin Configuration</h3>
+                <form onSubmit={handleSaveSettings}>
+                  <div className="form-group">
+                    <label className="form-label">SMTP Server Host</label>
+                    <input type="text" className="form-control" placeholder="e.g. smtp.mailgun.org" value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">SMTP Port</label>
+                    <input type="number" className="form-control" value={smtpPort} onChange={(e) => setSmtpPort(parseInt(e.target.value))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">SMTP Username</label>
+                    <input type="text" className="form-control" value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">SMTP Password</label>
+                    <input type="password" className="form-control" value={smtpPass} onChange={(e) => setSmtpPass(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Sender Email Address (From)</label>
+                    <input type="text" className="form-control" value={smtpFrom} onChange={(e) => setSmtpFrom(e.target.value)} />
+                  </div>
+
+                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '20px' }}>
+                    <input type="checkbox" checked={requireApprove} onChange={(e) => setRequireApprove(e.target.checked)} style={{ width: '20px', height: '20px' }} />
+                    <label className="form-label" style={{ marginBottom: 0 }}>Require Admin Provider Approval</label>
+                  </div>
+
+                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input type="checkbox" checked={requireVerify} onChange={(e) => setRequireVerify(e.target.checked)} style={{ width: '20px', height: '20px' }} />
+                    <label className="form-label" style={{ marginBottom: 0 }}>Require Customer Email Verification</label>
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '10px', padding: '14px' }}>
+                    Save Platform Settings
+                  </button>
+                </form>
               </div>
             </motion.div>
           )}
@@ -1189,6 +1392,101 @@ const Dashboard = () => {
                 <button onClick={saveMeetingNotes} className="btn-primary" style={{ flex: 1 }}>Save Notes</button>
                 <button onClick={() => setMeetingNotesTarget(null)} className="btn-secondary" style={{ flex: 1, border: 'none', background: 'rgba(0,0,0,0.05)' }}>Close</button>
               </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Modal: Edit User Details */}
+        {editingUser && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+            <motion.div className="glass-card" style={{ width: '500px', background: '#fff', maxHeight: '90vh', overflowY: 'auto' }} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '20px' }}>Edit User Details</h3>
+              <form onSubmit={handleEditUserSubmit}>
+                <div className="form-group">
+                  <label className="form-label">Full Name</label>
+                  <input type="text" className="form-control" value={editUserName} onChange={(e) => setEditUserName(e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Role</label>
+                  <select className="form-control" value={editUserRole} onChange={(e) => setEditUserRole(e.target.value)}>
+                    <option value="Customer">Customer</option>
+                    <option value="Provider">Provider</option>
+                    <option value="Receptionist">Receptionist</option>
+                    <option value="University Coordinator">University Coordinator</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Status</label>
+                  <select className="form-control" value={editUserStatus} onChange={(e) => setEditUserStatus(e.target.value)}>
+                    <option value="Approved">Approved</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Department</label>
+                  <select className="form-control" value={editUserDepartment} onChange={(e) => setEditUserDepartment(e.target.value)}>
+                    <option value="">None</option>
+                    {departments.map((d) => (
+                      <option key={d._id} value={d._id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <h4 style={{ margin: '20px 0 10px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px', fontSize: '1rem', fontWeight: 700 }}>Demographics & Address</h4>
+                <div className="form-group">
+                  <label className="form-label">Address</label>
+                  <input type="text" className="form-control" value={editUserAddress} onChange={(e) => setEditUserAddress(e.target.value)} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Date of Birth</label>
+                    <input type="date" className="form-control" value={editUserDob} onChange={(e) => setEditUserDob(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Age</label>
+                    <input type="number" className="form-control" value={editUserAge} onChange={(e) => setEditUserAge(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Gender</label>
+                  <select className="form-control" value={editUserGender} onChange={(e) => setEditUserGender(e.target.value)}>
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <h4 style={{ margin: '20px 0 10px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px', fontSize: '1rem', fontWeight: 700 }}>University Info</h4>
+                <div className="form-group">
+                  <label className="form-label">Program</label>
+                  <input type="text" className="form-control" value={editUserProgram} onChange={(e) => setEditUserProgram(e.target.value)} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Section</label>
+                    <input type="text" className="form-control" value={editUserSection} onChange={(e) => setEditUserSection(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Registration No</label>
+                    <input type="text" className="form-control" value={editUserRegistrationNo} onChange={(e) => setEditUserRegistrationNo(e.target.value)} />
+                  </div>
+                </div>
+
+                <h4 style={{ margin: '20px 0 10px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px', fontSize: '1rem', fontWeight: 700 }}>Professional ID</h4>
+                <div className="form-group">
+                  <label className="form-label">Faculty / Doctor ID</label>
+                  <input type="text" className="form-control" value={editUserProfessionalId} onChange={(e) => setEditUserProfessionalId(e.target.value)} />
+                </div>
+
+                <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
+                  <button type="submit" className="btn-primary" style={{ flex: 1 }}>Save Changes</button>
+                  <button type="button" onClick={() => setEditingUser(null)} className="btn-secondary" style={{ flex: 1, border: 'none', background: 'rgba(0,0,0,0.05)' }}>Cancel</button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

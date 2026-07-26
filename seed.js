@@ -50,12 +50,13 @@ const seedData = async () => {
 
     // 3. Create Users
     const plainPassword = 'password123';
+    const adminPassword = 'admin@123';
 
     // Create Admin
     const admin = await User.create({
       name: 'System Admin',
-      email: 'admin@scheduler.com',
-      password: plainPassword,
+      email: 'admin@gmail.com',
+      password: adminPassword,
       role: 'Admin',
       isEmailVerified: true,
       status: 'Approved'
@@ -64,7 +65,7 @@ const seedData = async () => {
     // Create Coordinator
     const coordinator = await User.create({
       name: 'Emma Coordinator',
-      email: 'coordinator@scheduler.com',
+      email: 'coordinator@gmail.com',
       password: plainPassword,
       role: 'University Coordinator',
       isEmailVerified: true,
@@ -74,7 +75,7 @@ const seedData = async () => {
     // Create Receptionist
     const receptionist = await User.create({
       name: 'Sarah Receptionist',
-      email: 'receptionist@scheduler.com',
+      email: 'receptionist@gmail.com',
       password: plainPassword,
       role: 'Receptionist',
       isEmailVerified: true,
@@ -84,7 +85,7 @@ const seedData = async () => {
     // Create Providers
     const provider1 = await User.create({
       name: 'Dr. Alan Turing',
-      email: 'alan@scheduler.com',
+      email: 'alan@gmail.com',
       password: plainPassword,
       role: 'Provider',
       title: 'Prof.',
@@ -97,7 +98,7 @@ const seedData = async () => {
 
     const provider2 = await User.create({
       name: 'Dr. Elizabeth Blackwell',
-      email: 'elizabeth@scheduler.com',
+      email: 'elizabeth@gmail.com',
       password: plainPassword,
       role: 'Provider',
       title: 'Dr.',
@@ -111,7 +112,7 @@ const seedData = async () => {
     // Create Customer
     const customer = await User.create({
       name: 'John Customer',
-      email: 'customer@scheduler.com',
+      email: 'customer@gmail.com',
       password: plainPassword,
       role: 'Customer',
       isEmailVerified: true,
@@ -135,14 +136,14 @@ const seedData = async () => {
 
     await Availability.create({
       provider: provider1._id,
-      timezone: 'UTC',
+      timezone: 'Asia/Kolkata',
       slotDuration: 30,
       weeklyHours: defaultWeeklyHours,
     });
 
     await Availability.create({
       provider: provider2._id,
-      timezone: 'UTC',
+      timezone: 'Asia/Kolkata',
       slotDuration: 30,
       weeklyHours: defaultWeeklyHours,
     });
@@ -192,12 +193,12 @@ const seedData = async () => {
     console.log('-------------------------------');
     console.log('Database seeding finished successfully!');
     console.log('Default credentials:');
-    console.log('Admin: admin@scheduler.com / password123');
-    console.log('Coordinator: coordinator@scheduler.com / password123');
-    console.log('Receptionist: receptionist@scheduler.com / password123');
-    console.log('Provider 1: alan@scheduler.com / password123');
-    console.log('Provider 2: elizabeth@scheduler.com / password123');
-    console.log('Customer: customer@scheduler.com / password123');
+    console.log('Admin: admin@gmail.com / admin@123');
+    console.log('Coordinator: coordinator@gmail.com / password123');
+    console.log('Receptionist: receptionist@gmail.com / password123');
+    console.log('Provider 1: alan@gmail.com / password123');
+    console.log('Provider 2: elizabeth@gmail.com / password123');
+    console.log('Customer: customer@gmail.com / password123');
     console.log('-------------------------------');
 
     process.exit(0);

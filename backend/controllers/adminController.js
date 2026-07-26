@@ -109,12 +109,27 @@ exports.updateUser = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const { name, role, status, department } = req.body;
+    const {
+      name, role, status, department, title, specialization, bio, avatar,
+      address, dob, age, gender, program, section, registrationNo, professionalId
+    } = req.body;
 
-    if (name) user.name = name;
-    if (role) user.role = role;
-    if (status) user.status = status;
+    if (name !== undefined) user.name = name;
+    if (role !== undefined) user.role = role;
+    if (status !== undefined) user.status = status;
     if (department !== undefined) user.department = department || null;
+    if (title !== undefined) user.title = title || '';
+    if (specialization !== undefined) user.specialization = specialization || '';
+    if (bio !== undefined) user.bio = bio || '';
+    if (avatar !== undefined) user.avatar = avatar || '';
+    if (address !== undefined) user.address = address || '';
+    if (dob !== undefined) user.dob = dob || '';
+    if (age !== undefined) user.age = age || null;
+    if (gender !== undefined) user.gender = gender || '';
+    if (program !== undefined) user.program = program || '';
+    if (section !== undefined) user.section = section || '';
+    if (registrationNo !== undefined) user.registrationNo = registrationNo || '';
+    if (professionalId !== undefined) user.professionalId = professionalId || '';
 
     await user.save();
     res.status(200).json({ success: true, message: 'User details updated successfully', user });

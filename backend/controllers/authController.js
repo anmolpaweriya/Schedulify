@@ -96,7 +96,7 @@ exports.register = async (req, res) => {
       }
       await Availability.create({
         provider: user._id,
-        timezone: 'UTC',
+        timezone: 'Asia/Kolkata',
         slotDuration: 30,
         weeklyHours: defaultWeeklyHours,
       });

@@ -74,14 +74,14 @@ appointment-saas/
 
 ## 🔑 Default Credentials (Seeded Accounts)
 
-You can log in immediately using the following accounts (all passwords are `password123`):
+You can log in immediately using the following accounts:
 
-- **System Administrator**: `admin@scheduler.com`
-- **University Coordinator**: `coordinator@scheduler.com`
-- **Receptionist**: `receptionist@scheduler.com`
-- **Provider 1 (Prof. Alan Turing)**: `alan@scheduler.com`
-- **Provider 2 (Dr. Elizabeth Blackwell)**: `elizabeth@scheduler.com`
-- **Customer**: `customer@scheduler.com`
+- **System Administrator**: `admin@gmail.com` (Password: `admin@123`)
+- **University Coordinator**: `coordinator@gmail.com` (Password: `password123`)
+- **Receptionist**: `receptionist@gmail.com` (Password: `password123`)
+- **Provider 1 (Prof. Alan Turing)**: `alan@gmail.com` (Password: `password123`)
+- **Provider 2 (Dr. Elizabeth Blackwell)**: `elizabeth@gmail.com` (Password: `password123`)
+- **Customer**: `customer@gmail.com` (Password: `password123`)
 
 ---
 
