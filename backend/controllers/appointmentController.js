@@ -1,7 +1,12 @@
 const Appointment = require('../models/Appointment');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
-const { sendEmail } = require('../utils/emailService');
+const {
+  sendEmail,
+  sendAppointmentBookedEmails,
+  sendAppointmentApprovedEmail,
+  sendAppointmentRejectedEmail,
+} = require('../utils/emailService');
 
 // Helper to create In-App notifications
 const createNotification = async (recipientId, title, message, type = 'Appointment') => {
@@ -53,24 +58,18 @@ exports.bookAppointment = async (req, res) => {
       reason,
     });
 
-    // Notify Provider (In-app and Email)
+    // Notify Provider and Customer via In-App and Email
     const providerMsg = `New appointment booked by ${req.user.name} on ${date} at ${startTime}`;
     await createNotification(providerId, 'New Appointment Booking', providerMsg);
 
-    await sendEmail({
-      to: provider.email,
-      subject: 'New Appointment Booking Request',
-      text: `${providerMsg}.\nReason: ${reason}\n\nPlease log in to approve or reject the request.`,
-    });
-
-    // Notify Customer
     const customerMsg = `Your appointment booking request with ${provider.title || ''} ${provider.name} on ${date} at ${startTime} has been submitted.`;
     await createNotification(req.user.id, 'Appointment Submitted', customerMsg);
 
-    await sendEmail({
-      to: req.user.email,
-      subject: 'Appointment Booking Request Received',
-      text: `${customerMsg}\n\nYou will be notified once the provider updates the status.`,
+    // Send formatted HTML emails
+    await sendAppointmentBookedEmails({
+      customer: req.user,
+      provider,
+      appointment,
     });
 
     res.status(201).json({ success: true, appointment });
@@ -173,14 +172,14 @@ exports.acceptAppointment = async (req, res) => {
     appointment.meetingLink = gMeetUrl;
     await appointment.save();
 
-    // Send notifications
+    // Send notifications & rich HTML email
     const msg = `Your appointment with ${appointment.provider.title || ''} ${appointment.provider.name} on ${appointment.date} at ${appointment.timeSlot.start} has been approved. Google Meet: ${gMeetUrl}`;
     await createNotification(appointment.customer._id, 'Appointment Approved', msg);
 
-    await sendEmail({
-      to: appointment.customer.email,
-      subject: 'Appointment Confirmed - Google Meet Link',
-      text: msg,
+    await sendAppointmentApprovedEmail({
+      customer: appointment.customer,
+      provider: appointment.provider,
+      appointment,
     });
 
     res.status(200).json({ success: true, message: 'Appointment approved successfully', appointment });
@@ -214,14 +213,14 @@ exports.rejectAppointment = async (req, res) => {
     appointment.rejectionReason = reasonText;
     await appointment.save();
 
-    // Send notifications
+    // Send notifications & rich HTML email
     const msg = `Your appointment request with ${appointment.provider.title || ''} ${appointment.provider.name} on ${appointment.date} at ${appointment.timeSlot.start} has been declined. Reason: ${reasonText}`;
     await createNotification(appointment.customer._id, 'Appointment Declined', msg);
 
-    await sendEmail({
-      to: appointment.customer.email,
-      subject: 'Appointment Declined',
-      text: msg,
+    await sendAppointmentRejectedEmail({
+      customer: appointment.customer,
+      provider: appointment.provider,
+      appointment,
     });
 
     res.status(200).json({ success: true, message: 'Appointment rejected successfully', appointment });
@@ -303,6 +302,20 @@ exports.completeAppointment = async (req, res) => {
 
     const msg = `Your appointment with ${appointment.provider.title || ''} ${appointment.provider.name} on ${appointment.date} has been marked as Completed.`;
     await createNotification(appointment.customer._id, 'Appointment Completed', msg);
+
+    await sendEmail({
+      to: appointment.customer.email,
+      subject: `Appointment Completed - ${appointment.date}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; borderRadius: 12px;">
+          <h2 style="color: #7c3aed;">Appointment Completed</h2>
+          <p>Dear <strong>${appointment.customer.name}</strong>,</p>
+          <p>Your session with <strong>${appointment.provider.name}</strong> on <strong>${appointment.date}</strong> has been marked as completed.</p>
+          ${appointment.meetingNotes ? `<div style="background: #f3e8ff; padding: 15px; border-radius: 8px; margin: 15px 0;"><p><strong>Provider Notes:</strong> ${appointment.meetingNotes}</p></div>` : ''}
+          <p>Thank you for using Schedulify!</p>
+        </div>
+      `,
+    });
 
     res.status(200).json({ success: true, message: 'Appointment marked as completed', appointment });
   } catch (error) {
