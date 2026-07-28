@@ -24,12 +24,11 @@ import {
   LinearScale,
   PointElement,
   LineElement,
-  BarElement,
   Title,
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
 
 // Register Chart.js components
 ChartJS.register(
@@ -37,7 +36,6 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
-  BarElement,
   Title,
   Tooltip,
   Legend
@@ -48,7 +46,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   const getRoleContext = () => {
-    if (user?.role === 'Admin') return { label: 'SaaS Administrator Hub', desc: 'Manage system-wide departments, configurations, and user lists.', type: 'admin' };
+    if (user?.role === 'Admin') return { label: 'SaaS Administrator Hub', desc: 'Manage system configurations and user lists.', type: 'admin' };
     
     // Customer roles
     if (user?.role === 'Customer') {
@@ -56,21 +54,14 @@ const Dashboard = () => {
         return { label: 'Patient Portal Dashboard', desc: 'Schedule health appointments, view prescriptions, and sync consultation logs.', type: 'patient' };
       }
       if (user.program || user.registrationNo) {
-        return { label: 'Student Academic Dashboard', desc: 'Sync advising sessions, consult department faculty, and manage syllabus syncs.', type: 'student' };
+        return { label: 'Student Academic Dashboard', desc: 'Sync advising sessions, consult faculty, and manage syllabus syncs.', type: 'student' };
       }
       return { label: 'Client Consultancy Console', desc: 'Check advisory schedules and coordinate meeting alignments.', type: 'client' };
     }
 
     // Provider roles
     if (user?.role === 'Provider') {
-      const deptCategory = user.department?.category || '';
-      if (deptCategory === 'Healthcare') {
-        return { label: 'Clinical Consultation Dashboard', desc: 'Review patient lists, diagnose details, and manage medical calendars.', type: 'doctor' };
-      }
-      if (deptCategory === 'Education') {
-        return { label: 'Academic Faculty Console', desc: 'Manage student advising hours, review syllabus consultations, and sync cohorts.', type: 'faculty' };
-      }
-      return { label: 'Advisory Management Console', desc: 'Schedule corporate bookings, coordinate slots, and review client alignments.', type: 'officer' };
+      return { label: 'Advisory Management Console', desc: 'Schedule bookings, coordinate slots, and review client alignments.', type: 'officer' };
     }
 
     return { label: 'Dashboard Hub', desc: 'Manage your active schedules.', type: 'default' };
@@ -79,12 +70,11 @@ const Dashboard = () => {
   const contextInfo = getRoleContext();
 
   // Navigation state
-  const [activeTab, setActiveTab] = useState('overview'); // overview, appointments, calendar, availability, departments, admin-users, settings
+  const [activeTab, setActiveTab] = useState('overview'); // overview, appointments, calendar, availability, admin-users, settings
 
   // Data states
   const [analytics, setAnalytics] = useState(null);
   const [appointments, setAppointments] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [providers, setProviders] = useState([]);
   const [pendingProviders, setPendingProviders] = useState([]);
   const [systemUsers, setSystemUsers] = useState([]);
@@ -100,20 +90,7 @@ const Dashboard = () => {
   const [meetingNotesTarget, setMeetingNotesTarget] = useState(null);
   const [meetingNotesContent, setMeetingNotesContent] = useState('');
 
-  // Department creation states
-  const [newDeptName, setNewDeptName] = useState('');
-  const [newDeptCode, setNewDeptCode] = useState('');
-  const [newDeptCategory, setNewDeptCategory] = useState('Education');
-  const [newDeptDesc, setNewDeptDesc] = useState('');
 
-  // Settings states
-  const [smtpHost, setSmtpHost] = useState('');
-  const [smtpPort, setSmtpPort] = useState(587);
-  const [smtpUser, setSmtpUser] = useState('');
-  const [smtpPass, setSmtpPass] = useState('');
-  const [smtpFrom, setSmtpFrom] = useState('');
-  const [requireApprove, setRequireApprove] = useState(true);
-  const [requireVerify, setRequireVerify] = useState(false);
 
   // Availability state
   const [timezone, setTimezone] = useState('UTC');
@@ -126,7 +103,6 @@ const Dashboard = () => {
   const [profTitle, setProfTitle] = useState('');
   const [profSpec, setProfSpec] = useState('');
   const [profBio, setProfBio] = useState('');
-  const [profDept, setProfDept] = useState('');
   const [profAddress, setProfAddress] = useState('');
   const [profDob, setProfDob] = useState('');
   const [profAge, setProfAge] = useState('');
@@ -134,7 +110,6 @@ const Dashboard = () => {
   const [profProgram, setProfProgram] = useState('');
   const [profSection, setProfSection] = useState('');
   const [profRegistrationNo, setProfRegistrationNo] = useState('');
-  const [profProfessionalId, setProfProfessionalId] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
 
   // Admin Editing User States
@@ -142,7 +117,6 @@ const Dashboard = () => {
   const [editUserName, setEditUserName] = useState('');
   const [editUserRole, setEditUserRole] = useState('Customer');
   const [editUserStatus, setEditUserStatus] = useState('Approved');
-  const [editUserDepartment, setEditUserDepartment] = useState('');
   const [editUserAddress, setEditUserAddress] = useState('');
   const [editUserDob, setEditUserDob] = useState('');
   const [editUserAge, setEditUserAge] = useState('');
@@ -150,7 +124,6 @@ const Dashboard = () => {
   const [editUserProgram, setEditUserProgram] = useState('');
   const [editUserSection, setEditUserSection] = useState('');
   const [editUserRegistrationNo, setEditUserRegistrationNo] = useState('');
-  const [editUserProfessionalId, setEditUserProfessionalId] = useState('');
 
   // Fetch initial analytics, notifications, appointments
   const fetchData = async () => {
@@ -173,12 +146,6 @@ const Dashboard = () => {
       const apptRes = await axios.get('/api/appointments');
       if (apptRes.data.success) {
         setAppointments(apptRes.data.appointments);
-      }
-
-      // Fetch departments
-      const deptRes = await axios.get('/api/departments');
-      if (deptRes.data.success) {
-        setDepartments(deptRes.data.departments);
       }
 
       // Fetch Providers (for booking lists)
@@ -213,21 +180,6 @@ const Dashboard = () => {
           setPendingProviders(pendingRes.data.providers);
         }
       }
-
-      // Fetch SMTP/Platform Settings
-      if (user?.role === 'Admin') {
-        const settingsRes = await axios.get('/api/admin/settings');
-        if (settingsRes.data.success) {
-          const s = settingsRes.data.settings;
-          setSmtpHost(s.smtpHost || '');
-          setSmtpPort(s.smtpPort || 587);
-          setSmtpUser(s.smtpUser || '');
-          setSmtpPass(s.smtpPass || '');
-          setSmtpFrom(s.smtpFrom || '');
-          setRequireApprove(s.requireProviderApproval);
-          setRequireVerify(s.requireEmailVerification);
-        }
-      }
     } catch (err) {
       console.error('Error fetching dashboard resources:', err);
     } finally {
@@ -244,7 +196,6 @@ const Dashboard = () => {
       setProfTitle(user.title || '');
       setProfSpec(user.specialization || '');
       setProfBio(user.bio || '');
-      setProfDept(user.department?._id || user.department || '');
       setProfAddress(user.address || '');
       setProfDob(user.dob || '');
       setProfAge(user.age || '');
@@ -252,7 +203,6 @@ const Dashboard = () => {
       setProfProgram(user.program || '');
       setProfSection(user.section || '');
       setProfRegistrationNo(user.registrationNo || '');
-      setProfProfessionalId(user.professionalId || '');
     } else {
       navigate('/login');
     }
@@ -308,7 +258,6 @@ const Dashboard = () => {
       fd.append('title', profTitle);
       fd.append('specialization', profSpec);
       fd.append('bio', profBio);
-      fd.append('department', profDept);
       fd.append('address', profAddress);
       fd.append('dob', profDob);
       fd.append('age', profAge);
@@ -316,7 +265,6 @@ const Dashboard = () => {
       fd.append('program', profProgram);
       fd.append('section', profSection);
       fd.append('registrationNo', profRegistrationNo);
-      fd.append('professionalId', profProfessionalId);
       if (avatarFile) {
         fd.append('avatar', avatarFile);
       }
@@ -334,7 +282,6 @@ const Dashboard = () => {
     setEditUserName(u.name || '');
     setEditUserRole(u.role || 'Customer');
     setEditUserStatus(u.status || 'Approved');
-    setEditUserDepartment(u.department?._id || u.department || '');
     setEditUserAddress(u.address || '');
     setEditUserDob(u.dob || '');
     setEditUserAge(u.age || '');
@@ -342,7 +289,6 @@ const Dashboard = () => {
     setEditUserProgram(u.program || '');
     setEditUserSection(u.section || '');
     setEditUserRegistrationNo(u.registrationNo || '');
-    setEditUserProfessionalId(u.professionalId || '');
   };
 
   const handleEditUserSubmit = async (e) => {
@@ -352,7 +298,6 @@ const Dashboard = () => {
         name: editUserName,
         role: editUserRole,
         status: editUserStatus,
-        department: editUserDepartment || null,
         address: editUserAddress,
         dob: editUserDob,
         age: editUserAge ? parseInt(editUserAge) : null,
@@ -360,7 +305,6 @@ const Dashboard = () => {
         program: editUserProgram,
         section: editUserSection,
         registrationNo: editUserRegistrationNo,
-        professionalId: editUserProfessionalId,
       });
       if (res.data.success) {
         toast.success('User updated successfully');
@@ -448,52 +392,6 @@ const Dashboard = () => {
     }
   };
 
-  // Create Department
-  const handleCreateDept = async (e) => {
-    e.preventDefault();
-    if (!newDeptName || !newDeptCode) {
-      return toast.error('Name and Code are required');
-    }
-    try {
-      const res = await axios.post('/api/departments', {
-        name: newDeptName,
-        code: newDeptCode,
-        category: newDeptCategory,
-        description: newDeptDesc,
-      });
-      if (res.data.success) {
-        toast.success('Department created successfully!');
-        setNewDeptName('');
-        setNewDeptCode('');
-        setNewDeptDesc('');
-        fetchData();
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create department');
-    }
-  };
-
-  // Save Settings
-  const handleSaveSettings = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await axios.put('/api/admin/settings', {
-        smtpHost,
-        smtpPort,
-        smtpUser,
-        smtpPass,
-        smtpFrom,
-        requireProviderApproval: requireApprove,
-        requireEmailVerification: requireVerify,
-      });
-      if (res.data.success) {
-        toast.success('Settings saved successfully');
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save settings');
-    }
-  };
-
   // Save Availability slots
   const handleSaveAvailability = async (e) => {
     e.preventDefault();
@@ -553,19 +451,6 @@ const Dashboard = () => {
         tension: 0.4,
         borderWidth: 3,
         pointBackgroundColor: '#a78bfa',
-      },
-    ],
-  };
-
-  const barChartData = {
-    labels: analytics?.deptDistribution?.map((d) => d.code) || [],
-    datasets: [
-      {
-        label: 'Bookings per Department',
-        data: analytics?.deptDistribution?.map((d) => d.count) || [],
-        backgroundColor: ['#ffedd5', '#e0f2fe', '#fef9c3', '#f3e8ff', '#34d399'],
-        borderColor: '#ea580c',
-        borderWidth: 1,
       },
     ],
   };
@@ -694,24 +579,6 @@ const Dashboard = () => {
           {['Admin', 'University Coordinator'].includes(user?.role) && (
             <>
               <button
-                onClick={() => setActiveTab('departments')}
-                className={`btn-secondary ${activeTab === 'departments' ? 'active-tab' : ''}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 16px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  background: activeTab === 'departments' ? 'rgba(255,255,255,0.8)' : 'transparent',
-                  fontWeight: 600,
-                  fontSize: '0.9rem'
-                }}
-              >
-                <PixelUniversity size={16} color="#ea580c" /> Departments
-              </button>
-
-              <button
                 onClick={() => setActiveTab('admin-users')}
                 className={`btn-secondary ${activeTab === 'admin-users' ? 'active-tab' : ''}`}
                 style={{
@@ -749,25 +616,7 @@ const Dashboard = () => {
             <PixelSettings size={16} color="#ea580c" /> Profile
           </button>
 
-          {user?.role === 'Admin' && (
-            <button
-              onClick={() => setActiveTab('saas-config')}
-              className={`btn-secondary ${activeTab === 'saas-config' ? 'active-tab' : ''}`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: '12px',
-                border: 'none',
-                background: activeTab === 'saas-config' ? 'rgba(255,255,255,0.8)' : 'transparent',
-                fontWeight: 600,
-                fontSize: '0.9rem'
-              }}
-            >
-              <PixelSettings size={16} color="#ea580c" /> Config
-            </button>
-          )}
+          {/* Profile Button */}
         </div>
 
         {/* Right Side: Profile Info & Log Out */}
@@ -982,19 +831,12 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Chart & Department Graphics */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr', gap: '30px', marginBottom: '40px', flexWrap: 'wrap' }}>
+              {/* Chart Graphics */}
+              <div style={{ marginBottom: '40px' }}>
                 <div className="glass-card" style={{ minHeight: '350px' }}>
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '20px' }}>Appointment Booking Velocity</h3>
                   <div style={{ height: '260px' }}>
                     <Line data={chartData} options={{ responsive: true, maintainAspectRatio: false }} />
-                  </div>
-                </div>
-
-                <div className="glass-card" style={{ minHeight: '350px' }}>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '20px' }}>Department Distributions</h3>
-                  <div style={{ height: '260px' }}>
-                    <Bar data={barChartData} options={{ responsive: true, maintainAspectRatio: false }} />
                   </div>
                 </div>
               </div>
@@ -1008,7 +850,7 @@ const Dashboard = () => {
                       <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.7)', padding: '15px 25px', borderRadius: '15px' }}>
                         <div>
                           <div style={{ fontWeight: 700 }}>{p.title || ''} {p.name}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#636366' }}>{p.specialization} • Department: {p.department?.name || 'None'}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#636366' }}>{p.specialization}</div>
                         </div>
                         <div style={{ display: 'flex', gap: '10px' }}>
                           <button onClick={() => handleProviderApproval(p._id, 'Approved')} className="btn-primary" style={{ padding: '8px 18px', background: '#34d399', fontSize: '0.85rem' }}>Approve</button>
@@ -1059,10 +901,19 @@ const Dashboard = () => {
                             </span>
                             <span style={{ fontSize: '0.85rem', color: '#636366', fontWeight: 600 }}>{appt.date} • {appt.timeSlot.start} - {appt.timeSlot.end}</span>
                           </div>
-                          <div style={{ fontWeight: 800, fontSize: '1.1rem', marginTop: '8px' }}>
-                            {user?.role === 'Customer' ? `${appt.provider.title || ''} ${appt.provider.name}` : appt.customer.name}
+                          <div style={{ fontWeight: 800, fontSize: '1.05rem', marginTop: '8px' }}>
+                            {['Admin', 'University Coordinator', 'Receptionist'].includes(user?.role) ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div><strong style={{ color: '#636366' }}>Booked By:</strong> {appt.customer?.name || 'Customer'} ({appt.customer?.email || 'N/A'})</div>
+                                <div><strong style={{ color: '#ea580c' }}>Faculty:</strong> {appt.provider ? `${appt.provider.title || ''} ${appt.provider.name} (${appt.provider.specialization || 'Specialist'})` : 'N/A'}</div>
+                              </div>
+                            ) : user?.role === 'Customer' ? (
+                              <div><strong style={{ color: '#ea580c' }}>Faculty:</strong> {appt.provider ? `${appt.provider.title || ''} ${appt.provider.name} (${appt.provider.specialization || 'Specialist'})` : 'N/A'}</div>
+                            ) : (
+                              <div><strong style={{ color: '#636366' }}>Customer:</strong> {appt.customer?.name || 'Customer'} ({appt.customer?.email || 'N/A'})</div>
+                            )}
                           </div>
-                          <div style={{ fontSize: '0.85rem', color: '#636366', marginTop: '3px' }}>Reason: {appt.reason}</div>
+                          <div style={{ fontSize: '0.85rem', color: '#636366', marginTop: '4px' }}>Reason: {appt.reason}</div>
                           {appt.meetingNotes && (
                             <div style={{ fontSize: '0.8rem', background: 'rgba(56,189,248,0.1)', padding: '6px 12px', borderRadius: '8px', marginTop: '10px', fontStyle: 'italic' }}>
                               Notes: {appt.meetingNotes}
@@ -1071,18 +922,18 @@ const Dashboard = () => {
                         </div>
 
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          {appt.status === 'Pending' && user?.role === 'Provider' && (
+                          {appt.status === 'Pending' && ['Provider', 'Admin', 'University Coordinator', 'Receptionist'].includes(user?.role) && (
                             <>
                               <button onClick={() => handleAppointmentAction(appt._id, 'accept')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#34d399' }}>Accept</button>
                               <button onClick={() => handleAppointmentAction(appt._id, 'reject')} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#fca5a5', border: 'none' }}>Reject</button>
                             </>
                           )}
 
-                          {appt.status === 'Approved' && user?.role === 'Provider' && (
+                          {appt.status === 'Approved' && ['Provider', 'Admin', 'University Coordinator', 'Receptionist'].includes(user?.role) && (
                             <button onClick={() => handleAppointmentAction(appt._id, 'complete')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#a78bfa' }}>Complete</button>
                           )}
 
-                          {user?.role === 'Provider' && (
+                          {['Provider', 'Admin'].includes(user?.role) && (
                             <button onClick={() => openMeetingNotes(appt)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Notes</button>
                           )}
 
@@ -1181,59 +1032,6 @@ const Dashboard = () => {
             </motion.div>
           )}
 
-          {activeTab === 'departments' && ['Admin', 'University Coordinator'].includes(user?.role) && (
-            <motion.div key="departments" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px' }}>
-                <div className="glass-card">
-                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px' }}>Existing Departments</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {departments.map((dept) => (
-                      <div key={dept._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', background: 'rgba(255,255,255,0.7)', borderRadius: '15px' }}>
-                        <div>
-                          <div style={{ fontWeight: 700 }}>{dept.name} ({dept.code})</div>
-                          <div style={{ fontSize: '0.8rem', color: '#636366' }}>Category: {dept.category} • {dept.description}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="glass-card">
-                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px' }}>Add Department</h3>
-                  <form onSubmit={handleCreateDept}>
-                    <div className="form-group">
-                      <label className="form-label">Department Name</label>
-                      <input type="text" className="form-control" placeholder="e.g. Computer Science" value={newDeptName} onChange={(e) => setNewDeptName(e.target.value)} required />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Code</label>
-                      <input type="text" className="form-control" placeholder="e.g. CS" value={newDeptCode} onChange={(e) => setNewDeptCode(e.target.value)} required />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Category</label>
-                      <select className="form-control" value={newDeptCategory} onChange={(e) => setNewDeptCategory(e.target.value)}>
-                        <option value="Education">Education</option>
-                        <option value="Healthcare">Healthcare</option>
-                        <option value="Corporate">Corporate</option>
-                        <option value="Government">Government</option>
-                        <option value="Legal">Legal</option>
-                        <option value="Consulting">Consulting</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Description</label>
-                      <textarea className="form-control" placeholder="Short description..." value={newDeptDesc} onChange={(e) => setNewDeptDesc(e.target.value)} rows={2} style={{ resize: 'none' }} />
-                    </div>
-                    <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '10px' }}>
-                      Add Department
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
           {activeTab === 'admin-users' && ['Admin', 'University Coordinator'].includes(user?.role) && (
             <motion.div key="admin-users" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}>
               <div className="glass-card">
@@ -1247,11 +1045,10 @@ const Dashboard = () => {
                           {u.email} • Role: <strong>{u.role}</strong> {u.role === 'Provider' && `• Status: ${u.status}`}
                         </div>
                         {u.address && <div style={{ fontSize: '0.75rem', color: '#8e8e93', marginTop: '3px' }}>Address: {u.address}</div>}
-                        {(u.dob || u.registrationNo || u.professionalId) && (
+                        {(u.dob || u.registrationNo) && (
                           <div style={{ fontSize: '0.75rem', color: '#ea580c', marginTop: '3px' }}>
                             {u.dob && `DOB: ${u.dob} • `}
-                            {u.registrationNo && `Reg No: ${u.registrationNo} • `}
-                            {u.professionalId && `ID: ${u.professionalId}`}
+                            {u.registrationNo && `Reg No: ${u.registrationNo}`}
                           </div>
                         )}
                       </div>
@@ -1331,15 +1128,6 @@ const Dashboard = () => {
                     </div>
                   </div>
 
-                  {/* Staff ID details */}
-                  <h4 style={{ margin: '25px 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.1rem', fontWeight: 700 }}>
-                    Professional ID / Staff Card
-                  </h4>
-                  <div className="form-group">
-                    <label className="form-label">Faculty Employee / Doctor License ID</label>
-                    <input type="text" className="form-control" placeholder="e.g. DOC-8374-IN or FAC-CS-928" value={profProfessionalId} onChange={(e) => setProfProfessionalId(e.target.value)} />
-                  </div>
-
                   {user?.role === 'Provider' && (
                     <>
                       <h4 style={{ margin: '25px 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.1rem', fontWeight: 700 }}>
@@ -1357,65 +1145,11 @@ const Dashboard = () => {
                         <label className="form-label">Biography</label>
                         <textarea className="form-control" value={profBio} onChange={(e) => setProfBio(e.target.value)} rows={3} style={{ resize: 'none' }} />
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">Department</label>
-                        <select className="form-control" value={profDept} onChange={(e) => setProfDept(e.target.value)}>
-                          {departments.map((dept) => (
-                            <option key={dept._id} value={dept._id}>
-                              {dept.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                     </>
                   )}
 
                   <button type="submit" className="btn-primary" style={{ marginTop: '20px', width: '100%', padding: '14px' }}>
                     Save Profile Details
-                  </button>
-                </form>
-              </div>
-            </motion.div>
-          )}
-
-          {activeTab === 'saas-config' && user?.role === 'Admin' && (
-            <motion.div key="saas-config" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}>
-              <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
-                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px' }}>SaaS Admin Configuration</h3>
-                <form onSubmit={handleSaveSettings}>
-                  <div className="form-group">
-                    <label className="form-label">SMTP Server Host</label>
-                    <input type="text" className="form-control" placeholder="e.g. smtp.mailgun.org" value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">SMTP Port</label>
-                    <input type="number" className="form-control" value={smtpPort} onChange={(e) => setSmtpPort(parseInt(e.target.value))} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">SMTP Username</label>
-                    <input type="text" className="form-control" value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">SMTP Password</label>
-                    <input type="password" className="form-control" value={smtpPass} onChange={(e) => setSmtpPass(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Sender Email Address (From)</label>
-                    <input type="text" className="form-control" value={smtpFrom} onChange={(e) => setSmtpFrom(e.target.value)} />
-                  </div>
-
-                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '20px' }}>
-                    <input type="checkbox" checked={requireApprove} onChange={(e) => setRequireApprove(e.target.checked)} style={{ width: '20px', height: '20px' }} />
-                    <label className="form-label" style={{ marginBottom: 0 }}>Require Admin Provider Approval</label>
-                  </div>
-
-                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <input type="checkbox" checked={requireVerify} onChange={(e) => setRequireVerify(e.target.checked)} style={{ width: '20px', height: '20px' }} />
-                    <label className="form-label" style={{ marginBottom: 0 }}>Require Customer Email Verification</label>
-                  </div>
-
-                  <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '10px', padding: '14px' }}>
-                    Save Platform Settings
                   </button>
                 </form>
               </div>
@@ -1503,15 +1237,6 @@ const Dashboard = () => {
                     <option value="Rejected">Rejected</option>
                   </select>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Department</label>
-                  <select className="form-control" value={editUserDepartment} onChange={(e) => setEditUserDepartment(e.target.value)}>
-                    <option value="">None</option>
-                    {departments.map((d) => (
-                      <option key={d._id} value={d._id}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
                 
                 <h4 style={{ margin: '20px 0 10px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px', fontSize: '1rem', fontWeight: 700 }}>Demographics & Address</h4>
                 <div className="form-group">
@@ -1554,12 +1279,6 @@ const Dashboard = () => {
                     <label className="form-label">Registration No</label>
                     <input type="text" className="form-control" value={editUserRegistrationNo} onChange={(e) => setEditUserRegistrationNo(e.target.value)} />
                   </div>
-                </div>
-
-                <h4 style={{ margin: '20px 0 10px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px', fontSize: '1rem', fontWeight: 700 }}>Professional ID</h4>
-                <div className="form-group">
-                  <label className="form-label">Faculty / Doctor ID</label>
-                  <input type="text" className="form-control" value={editUserProfessionalId} onChange={(e) => setEditUserProfessionalId(e.target.value)} />
                 </div>
 
                 <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>

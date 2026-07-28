@@ -83,37 +83,22 @@ const runTests = async () => {
     process.exit(1);
   }
 
-  // Test 3: Fetch Protected Admin Settings
+  // Test 3: Fetch Appointments as Admin
   try {
     const res = await makeRequest({
       hostname: 'localhost',
       port: 5000,
-      path: '/api/admin/settings',
+      path: '/api/appointments',
       method: 'GET',
       headers: {
         Cookie: cookieHeader,
       },
     });
 
-    console.log(`[TEST 3] Fetch Admin Settings status: ${res.statusCode} (Expected: 200)`);
-    console.log('Settings:', res.body.settings ? 'Retrieved successfully' : 'Failed');
+    console.log(`[TEST 3] Fetch All Appointments status: ${res.statusCode} (Expected: 200)`);
+    console.log(`Appointments Count: ${res.body.count !== undefined ? res.body.count : 'Failed'}`);
   } catch (error) {
     console.error('[TEST 3 FAILED] Error:', error.message);
-  }
-
-  // Test 4: Fetch Departments
-  try {
-    const res = await makeRequest({
-      hostname: 'localhost',
-      port: 5000,
-      path: '/api/departments',
-      method: 'GET',
-    });
-
-    console.log(`[TEST 4] Fetch Departments status: ${res.statusCode} (Expected: 200)`);
-    console.log(`Count of Departments: ${res.body.count || 0}`);
-  } catch (error) {
-    console.error('[TEST 4 FAILED] Error:', error.message);
   }
 
   console.log('--- Verification Tests Complete ---');

@@ -39,11 +39,6 @@ const userSchema = new mongoose.Schema(
       type: String, // e.g. Dr., Prof., Counselor, Attorney
       default: '',
     },
-    department: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Department',
-      default: null,
-    },
     specialization: {
       type: String,
       default: '',

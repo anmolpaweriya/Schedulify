@@ -33,7 +33,6 @@ const sendTokenResponse = (user, statusCode, res) => {
       avatar: user.avatar,
       status: user.status,
       title: user.title,
-      department: user.department,
       specialization: user.specialization,
       bio: user.bio,
     },
@@ -45,7 +44,7 @@ const sendTokenResponse = (user, statusCode, res) => {
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role, title, department, specialization, bio } = req.body;
+    const { name, email, password, role, title, specialization, bio, selectedDays, startTime, endTime } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -72,7 +71,6 @@ exports.register = async (req, res) => {
       password,
       role: role || 'Customer',
       title: role === 'Provider' ? title : '',
-      department: role === 'Provider' ? (department || null) : null,
       specialization: role === 'Provider' ? specialization : '',
       bio: role === 'Provider' ? bio : '',
       isEmailVerified: !requireEmailVerification,
@@ -80,25 +78,28 @@ exports.register = async (req, res) => {
       emailVerificationExpire,
     });
 
-    // If Provider, initialize empty Availability
+    // If Provider, initialize Availability based on configured days and hours
     if (user.role === 'Provider') {
-      const defaultWeeklyHours = [];
+      const activeDays = Array.isArray(selectedDays) && selectedDays.length > 0 ? selectedDays : [1, 2, 3, 4, 5];
+      const slotStart = startTime || '09:00';
+      const slotEnd = endTime || '17:00';
+
+      const weeklyHoursConfig = [];
       // Sunday=0, Monday=1, ..., Saturday=6
-      for (let i = 1; i <= 5; i++) {
-        defaultWeeklyHours.push({
-          dayOfWeek: i,
-          slots: [
-            { start: '09:00', end: '12:00' },
-            { start: '13:00', end: '17:00' },
-          ],
-          isActive: true,
+      for (let day = 0; day <= 6; day++) {
+        const isActiveDay = activeDays.includes(day);
+        weeklyHoursConfig.push({
+          dayOfWeek: day,
+          slots: isActiveDay ? [{ start: slotStart, end: slotEnd }] : [],
+          isActive: isActiveDay,
         });
       }
+
       await Availability.create({
         provider: user._id,
         timezone: 'Asia/Kolkata',
         slotDuration: 30,
-        weeklyHours: defaultWeeklyHours,
+        weeklyHours: weeklyHoursConfig,
       });
     }
 
@@ -191,7 +192,7 @@ exports.logout = async (req, res) => {
 // @access  Private
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).populate('department');
+    const user = await User.findById(req.user.id);
     res.status(200).json({ success: true, user });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

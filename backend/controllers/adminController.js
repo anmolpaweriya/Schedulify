@@ -56,7 +56,7 @@ exports.updateSettings = async (req, res) => {
 // @access  Private/Admin/Coordinator
 exports.getPendingProviders = async (req, res) => {
   try {
-    const providers = await User.find({ role: 'Provider', status: 'Pending' }).populate('department');
+    const providers = await User.find({ role: 'Provider', status: 'Pending' });
     res.status(200).json({ success: true, count: providers.length, providers });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -110,14 +110,13 @@ exports.updateUser = async (req, res) => {
     }
 
     const {
-      name, role, status, department, title, specialization, bio, avatar,
+      name, role, status, title, specialization, bio, avatar,
       address, dob, age, gender, program, section, registrationNo, professionalId
     } = req.body;
 
     if (name !== undefined) user.name = name;
     if (role !== undefined) user.role = role;
     if (status !== undefined) user.status = status;
-    if (department !== undefined) user.department = department || null;
     if (title !== undefined) user.title = title || '';
     if (specialization !== undefined) user.specialization = specialization || '';
     if (bio !== undefined) user.bio = bio || '';

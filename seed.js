@@ -4,7 +4,6 @@ const bcrypt = require('bcrypt');
 
 // Models
 const User = require('./backend/models/User');
-const Department = require('./backend/models/Department');
 const Availability = require('./backend/models/Availability');
 const Appointment = require('./backend/models/Appointment');
 const Settings = require('./backend/models/Settings');
@@ -22,7 +21,6 @@ const seedData = async () => {
 
     // Clean tables
     await User.deleteMany();
-    await Department.deleteMany();
     await Availability.deleteMany();
     await Appointment.deleteMany();
     await Settings.deleteMany();
@@ -39,16 +37,7 @@ const seedData = async () => {
     });
     console.log('Default settings created.');
 
-    // 2. Create Departments
-    const depts = await Department.create([
-      { name: 'Computer Science & AI', code: 'CSAI', category: 'Education', description: 'Faculty of computer science, machine learning, and AI coaching.' },
-      { name: 'Cardiology Center', code: 'CARDIO', category: 'Healthcare', description: 'Consultations, cardiovascular diagnoses, and checking wellness.' },
-      { name: 'Human Resources & Talent', code: 'HR', category: 'Corporate', description: 'Interviews, alignment, corporate scheduling and counseling.' },
-      { name: 'Legal Advisory', code: 'LAW', category: 'Legal', description: 'Corporate litigation, family dispute counseling, and notary services.' }
-    ]);
-    console.log(`${depts.length} departments created.`);
-
-    // 3. Create Users
+    // 2. Create Users
     const plainPassword = 'password123';
     const adminPassword = 'admin@123';
 
@@ -89,7 +78,6 @@ const seedData = async () => {
       password: plainPassword,
       role: 'Provider',
       title: 'Prof.',
-      department: depts[0]._id, // CSAI
       specialization: 'Artificial Intelligence',
       bio: 'Pioneering researcher in computer science, cryptography, and neural systems.',
       isEmailVerified: true,
@@ -102,7 +90,6 @@ const seedData = async () => {
       password: plainPassword,
       role: 'Provider',
       title: 'Dr.',
-      department: depts[1]._id, // CARDIO
       specialization: 'Cardiovascular Surgery',
       bio: 'Renowned cardiologist with 20+ years of operational medicine experience.',
       isEmailVerified: true,
@@ -121,7 +108,7 @@ const seedData = async () => {
 
     console.log('Users created.');
 
-    // 4. Create Provider Availability rules
+    // 3. Create Provider Availability rules
     const defaultWeeklyHours = [];
     for (let i = 1; i <= 5; i++) {
       defaultWeeklyHours.push({
@@ -150,7 +137,7 @@ const seedData = async () => {
 
     console.log('Provider schedules registered.');
 
-    // 5. Create Historical / Sample Appointments (For analytics chart)
+    // 4. Create Historical / Sample Appointments (For analytics chart)
     const today = new Date();
     const appts = [];
 
@@ -167,7 +154,6 @@ const seedData = async () => {
       appts.push({
         customer: customer._id,
         provider: provider1._id,
-        department: depts[0]._id,
         date: dateString,
         timeSlot: { start: '09:30', end: '10:00' },
         status: i === 0 ? 'Pending' : 'Completed',
@@ -178,7 +164,6 @@ const seedData = async () => {
       appts.push({
         customer: customer._id,
         provider: provider2._id,
-        department: depts[1]._id,
         date: dateString,
         timeSlot: { start: '14:00', end: '14:30' },
         status: 'Approved',

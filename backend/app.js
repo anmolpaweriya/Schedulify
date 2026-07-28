@@ -8,7 +8,6 @@ const path = require('path');
 // Route files
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
-const departmentRoutes = require('./routes/departmentRoutes');
 const appointmentRoutes = require('./routes/appointmentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -50,7 +49,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Mount routers
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/departments', departmentRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);

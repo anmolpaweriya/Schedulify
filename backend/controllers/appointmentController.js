@@ -1,7 +1,6 @@
 const Appointment = require('../models/Appointment');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
-const Department = require('../models/Department');
 const { sendEmail } = require('../utils/emailService');
 
 // Helper to create In-App notifications
@@ -23,18 +22,12 @@ const createNotification = async (recipientId, title, message, type = 'Appointme
 // @access  Private/Customer
 exports.bookAppointment = async (req, res) => {
   try {
-    const { providerId, departmentId, date, startTime, endTime, reason } = req.body;
+    const { providerId, date, startTime, endTime, reason } = req.body;
 
     // Validate provider
     const provider = await User.findById(providerId);
     if (!provider || provider.role !== 'Provider' || provider.status !== 'Approved') {
       return res.status(400).json({ success: false, message: 'Invalid provider selected' });
-    }
-
-    // Validate department
-    const department = await Department.findById(departmentId);
-    if (!department) {
-      return res.status(400).json({ success: false, message: 'Invalid department selected' });
     }
 
     // Check if slot is already booked for this provider on this date and time
@@ -52,7 +45,6 @@ exports.bookAppointment = async (req, res) => {
     const appointment = await Appointment.create({
       customer: req.user.id,
       provider: providerId,
-      department: departmentId,
       date,
       timeSlot: {
         start: startTime,
@@ -93,16 +85,17 @@ exports.bookAppointment = async (req, res) => {
 // @access  Private
 exports.getAppointments = async (req, res) => {
   try {
-    const { status, date, providerId, departmentId } = req.query;
+    const { status, date, providerId } = req.query;
     let query = {};
 
     // Filter by role
+    const userId = req.user._id || req.user.id;
     if (req.user.role === 'Customer') {
-      query.customer = req.user.id;
+      query.customer = userId;
     } else if (req.user.role === 'Provider') {
-      query.provider = req.user.id;
+      query.provider = userId;
     }
-    // Admin, Receptionist, University Coordinator can see all
+    // Admin, Receptionist, University Coordinator can view all platform appointments
 
     if (status) {
       query.status = status;
@@ -113,14 +106,10 @@ exports.getAppointments = async (req, res) => {
     if (providerId) {
       query.provider = providerId;
     }
-    if (departmentId) {
-      query.department = departmentId;
-    }
 
     const appointments = await Appointment.find(query)
       .populate('customer', 'name email avatar')
-      .populate('provider', 'name email avatar title department specialization')
-      .populate('department', 'name category code')
+      .populate('provider', 'name email avatar title specialization bio')
       .sort({ date: 1, 'timeSlot.start': 1 });
 
     res.status(200).json({ success: true, count: appointments.length, appointments });
@@ -136,8 +125,7 @@ exports.getAppointment = async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id)
       .populate('customer', 'name email avatar')
-      .populate('provider', 'name email avatar title department specialization')
-      .populate('department', 'name category code');
+      .populate('provider', 'name email avatar title specialization');
 
     if (!appointment) {
       return res.status(404).json({ success: false, message: 'Appointment not found' });

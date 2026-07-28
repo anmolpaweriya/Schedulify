@@ -1,6 +1,5 @@
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
-const Department = require('../models/Department');
 
 // @desc    Get dashboard analytics summary
 // @route   GET /api/analytics/dashboard
@@ -31,38 +30,7 @@ exports.getDashboardAnalytics = async (req, res) => {
       { name: 'Cancelled', value: cancelledCount },
     ];
 
-    // 3. Department distribution (only for Admin/Coordinator/Receptionist)
-    let deptDistribution = [];
-    if (['Admin', 'University Coordinator', 'Receptionist'].includes(req.user.role)) {
-      deptDistribution = await Appointment.aggregate([
-        { $match: matchQuery },
-        {
-          $group: {
-            _id: '$department',
-            count: { $sum: 1 },
-          },
-        },
-        {
-          $lookup: {
-            from: 'departments',
-            localField: '_id',
-            foreignField: '_id',
-            as: 'deptInfo',
-          },
-        },
-        { $unwind: '$deptInfo' },
-        {
-          $project: {
-            name: '$deptInfo.name',
-            code: '$deptInfo.code',
-            count: 1,
-          },
-        },
-        { $sort: { count: -1 } },
-      ]);
-    }
-
-    // 4. Appointments per day (last 7 days)
+    // 3. Appointments per day (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
@@ -90,14 +58,13 @@ exports.getDashboardAnalytics = async (req, res) => {
       },
     ]);
 
-    // 5. System counters (Admin only)
+    // 4. System counters (Admin only)
     let systemCounts = {};
     if (req.user.role === 'Admin') {
       systemCounts = {
         users: await User.countDocuments(),
         providers: await User.countDocuments({ role: 'Provider' }),
         customers: await User.countDocuments({ role: 'Customer' }),
-        departments: await Department.countDocuments(),
       };
     }
 
@@ -111,7 +78,6 @@ exports.getDashboardAnalytics = async (req, res) => {
         cancelled: cancelledCount,
       },
       statusData,
-      deptDistribution,
       dailyBookings,
       systemCounts,
     });

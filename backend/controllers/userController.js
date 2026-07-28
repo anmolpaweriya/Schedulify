@@ -1,13 +1,12 @@
 const User = require('../models/User');
 const Availability = require('../models/Availability');
-const Department = require('../models/Department');
 
 // @desc    Get all users (Admin only)
 // @route   GET /api/users
 // @access  Private/Admin
 exports.getUsers = async (req, res) => {
   try {
-    const users = await User.find().populate('department');
+    const users = await User.find();
     res.status(200).json({ success: true, count: users.length, users });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -19,21 +18,19 @@ exports.getUsers = async (req, res) => {
 // @access  Public
 exports.getProviders = async (req, res) => {
   try {
-    const { department, search } = req.query;
+    const { search } = req.query;
     let query = { role: 'Provider', status: 'Approved' };
-
-    if (department) {
-      query.department = department;
-    }
 
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
+        { title: { $regex: search, $options: 'i' } },
         { specialization: { $regex: search, $options: 'i' } },
+        { bio: { $regex: search, $options: 'i' } },
       ];
     }
 
-    const providers = await User.find(query).populate('department');
+    const providers = await User.find(query);
     res.status(200).json({ success: true, count: providers.length, providers });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -45,7 +42,7 @@ exports.getProviders = async (req, res) => {
 // @access  Private
 exports.getUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).populate('department');
+    const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -77,18 +74,9 @@ exports.updateProfile = async (req, res) => {
       }
     });
 
-    if (req.body.department !== undefined) {
-      user.department = req.body.department || null;
-    }
-
-    // Handled uploaded avatar if present (from Multer middleware)
-    if (req.file) {
-      user.avatar = `/uploads/${req.file.filename}`;
-    }
-
     await user.save();
 
-    const updatedUser = await User.findById(req.user.id).populate('department');
+    const updatedUser = await User.findById(req.user.id);
 
     res.status(200).json({
       success: true,

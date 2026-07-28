@@ -4,22 +4,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { PixelCalendar } from '../components/PixelIcons';
+import { PixelCalendar, PixelUser } from '../components/PixelIcons';
 
 const BookAppointment = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Booking Flow Steps: 1 = Dept, 2 = Provider, 3 = Date & Slot, 4 = Details & Confirm
+  // Booking Flow Steps: 1 = Choose Faculty, 2 = Date & Slot, 3 = Details & Confirm
   const [step, setStep] = useState(1);
 
-  // Lists
-  const [departments, setDepartments] = useState([]);
+  // Lists & Search
   const [providers, setProviders] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
 
   // Selections
-  const [selectedDept, setSelectedDept] = useState(null);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlot, setSelectedSlot] = useState(null); // { start, end }
@@ -32,42 +31,39 @@ const BookAppointment = () => {
       navigate('/login');
       return;
     }
-    // Fetch departments
-    const fetchDepts = async () => {
+    // Fetch all active providers/faculties
+    const fetchProviders = async () => {
       try {
-        const res = await axios.get('/api/departments');
+        setLoading(true);
+        const res = await axios.get('/api/users/providers');
         if (res.data.success) {
-          setDepartments(res.data.departments);
+          setProviders(res.data.providers);
         }
       } catch (err) {
         console.error(err);
+        toast.error('Error fetching available faculties');
+      } finally {
+        setLoading(false);
       }
     };
-    fetchDepts();
-  }, [user]);
-
-  // Handle department selection
-  const handleSelectDept = async (dept) => {
-    setSelectedDept(dept);
-    try {
-      setLoading(true);
-      const res = await axios.get(`/api/users/providers?department=${dept._id}`);
-      if (res.data.success) {
-        setProviders(res.data.providers);
-        setStep(2);
-      }
-    } catch (err) {
-      toast.error('Error fetching providers for this department');
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchProviders();
+  }, [user, navigate]);
 
   // Handle provider selection
   const handleSelectProvider = (prov) => {
     setSelectedProvider(prov);
-    setStep(3);
+    setStep(2);
   };
+
+  // Filtered provider list based on search term
+  const filteredProviders = providers.filter((p) => {
+    const term = searchTerm.toLowerCase();
+    const nameMatch = (p.name || '').toLowerCase().includes(term);
+    const titleMatch = (p.title || '').toLowerCase().includes(term);
+    const specMatch = (p.specialization || '').toLowerCase().includes(term);
+    const bioMatch = (p.bio || '').toLowerCase().includes(term);
+    return nameMatch || titleMatch || specMatch || bioMatch;
+  });
 
   // Handle date select and compute slot availability rules
   const handleDateChange = async (dateVal) => {
@@ -93,14 +89,14 @@ const BookAppointment = () => {
         
         // Check if date is in blocked dates
         if (availability.blockedDates.includes(dateVal)) {
-          toast.warning('Provider is out of office / blocked on this date.');
+          toast.warning('Faculty is out of office / unavailable on this date.');
           return;
         }
 
         // Find matching weekly hours configuration
         const weeklyConfig = availability.weeklyHours.find((wh) => wh.dayOfWeek === dayOfWeek && wh.isActive);
         if (!weeklyConfig) {
-          toast.warning('Provider has no slots configured for this day of the week.');
+          toast.warning('Faculty has no available slots configured for this day of the week.');
           return;
         }
 
@@ -167,7 +163,6 @@ const BookAppointment = () => {
       setLoading(true);
       const res = await axios.post('/api/appointments', {
         providerId: selectedProvider._id,
-        departmentId: selectedDept._id,
         date: selectedDate,
         startTime: selectedSlot.start,
         endTime: selectedSlot.end,
@@ -175,7 +170,7 @@ const BookAppointment = () => {
       });
 
       if (res.data.success) {
-        toast.success('Appointment booking submitted successfully! Confirmation email sent.');
+        toast.success('Appointment booking submitted successfully!');
         navigate('/dashboard');
       }
     } catch (err) {
@@ -186,36 +181,41 @@ const BookAppointment = () => {
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 20px' }}>
+    <div style={{ maxWidth: '850px', margin: '40px auto', padding: '0 20px' }}>
       
-      {/* Dynamic Background Blurs */}
+      {/* Background Blurs */}
       <div className="bg-blobs">
         <div className="blob blob-1"></div>
         <div className="blob blob-2"></div>
         <div className="blob blob-3"></div>
       </div>
 
-      {/* Top Breadcrumb Header */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {/* Top Header */}
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <PixelCalendar size={28} color="#ea580c" />
-          <span style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'Outfit' }}>Book appointment</span>
+          <span style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'Outfit' }}>Book Appointment</span>
         </div>
         <Link to="/dashboard" className="btn-secondary" style={{ textDecoration: 'none' }}>
           Back to Dashboard
         </Link>
       </header>
 
-      {/* Progress indicators */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '40px' }}>
-        {[1, 2, 3, 4].map((s) => (
+      {/* Progress Indicators */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '35px' }}>
+        {[
+          { stepNum: 1, label: '1. Choose Faculty' },
+          { stepNum: 2, label: '2. Date & Time Slots' },
+          { stepNum: 3, label: '3. Confirm Session' },
+        ].map((s) => (
           <div
-            key={s}
+            key={s.stepNum}
             style={{
               flex: 1,
               height: '6px',
               borderRadius: '3px',
-              background: s <= step ? 'linear-gradient(135deg, var(--saffron) 0%, #ea580c 100%)' : 'rgba(255,255,255,0.4)',
+              background: s.stepNum <= step ? 'linear-gradient(135deg, var(--saffron) 0%, #ea580c 100%)' : 'rgba(255,255,255,0.4)',
+              transition: 'all 0.3s',
             }}
           ></div>
         ))}
@@ -224,53 +224,67 @@ const BookAppointment = () => {
       {/* Step Contents */}
       <AnimatePresence mode="wait">
         
+        {/* STEP 1: CHOOSE FACULTY / PROVIDER */}
         {step === 1 && (
-          <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="glass-card">
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '20px' }}>Select Department / Category</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
-              {departments.map((dept) => (
-                <div
-                  key={dept._id}
-                  onClick={() => handleSelectDept(dept)}
-                  className="glass-card"
-                  style={{ cursor: 'pointer', padding: '25px', background: 'rgba(255,255,255,0.6)', border: '1px solid var(--glass-border)', textAlign: 'center' }}
-                >
-                  <div style={{ fontSize: '0.85rem', color: '#ea580c', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>
-                    {dept.category}
-                  </div>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>{dept.name}</h3>
-                  <p style={{ fontSize: '0.8rem', color: '#636366', marginTop: '10px' }}>{dept.description || 'Access scheduler'}</p>
-                </div>
-              ))}
+          <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="glass-card" style={{ padding: '30px' }}>
+            <div style={{ marginBottom: '25px' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Available Faculties & Specialists</h2>
+              <p style={{ color: '#636366', fontSize: '0.9rem', marginTop: '5px' }}>Select any doctor, teacher, or specialist to book a slot</p>
             </div>
-          </motion.div>
-        )}
 
-        {step === 2 && (
-          <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="glass-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Choose Professional</h2>
-              <button onClick={() => setStep(1)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Back</button>
+            {/* Search Bar */}
+            <div style={{ marginBottom: '25px' }}>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search by name, title, or profession (e.g. Doctor, Teacher, Cardiology, AI)..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ padding: '14px 20px', borderRadius: '15px', fontSize: '0.95rem' }}
+              />
             </div>
             
-            {providers.length === 0 ? (
-              <p style={{ textAlign: 'center', color: '#8e8e93', padding: '30px' }}>No active providers in this department.</p>
+            {loading ? (
+              <p style={{ textAlign: 'center', color: '#8e8e93', padding: '40px' }}>Loading faculties...</p>
+            ) : filteredProviders.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', background: 'rgba(255,255,255,0.5)', borderRadius: '20px' }}>
+                <PixelUser size={36} color="#8e8e93" style={{ marginBottom: '10px' }} />
+                <p style={{ color: '#8e8e93', fontWeight: 600 }}>No faculties found matching "{searchTerm}"</p>
+              </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                {providers.map((p) => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                {filteredProviders.map((p) => (
                   <div
                     key={p._id}
                     onClick={() => handleSelectProvider(p)}
                     className="glass-card"
-                    style={{ cursor: 'pointer', display: 'flex', gap: '20px', alignItems: 'center', padding: '20px', background: 'rgba(255,255,255,0.6)' }}
+                    style={{
+                      cursor: 'pointer',
+                      padding: '20px',
+                      background: 'rgba(255,255,255,0.7)',
+                      border: '1px solid var(--glass-border)',
+                      display: 'flex',
+                      gap: '15px',
+                      alignItems: 'flex-start',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                    }}
                   >
-                    <div style={{ width: '54px', height: '54px', borderRadius: '50%', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
+                    <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.3rem', flexShrink: 0 }}>
                       {p.avatar ? <img src={`${axios.defaults.baseURL}${p.avatar}`} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : p.name.charAt(0)}
                     </div>
-                    <div>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>{p.title || ''} {p.name}</h3>
-                      <p style={{ fontSize: '0.85rem', color: '#ea580c', fontWeight: 600, marginTop: '3px' }}>{p.specialization}</p>
-                      <p style={{ fontSize: '0.8rem', color: '#636366', marginTop: '6px' }}>{p.bio}</p>
+
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>
+                        {p.title || ''} {p.name}
+                      </h3>
+                      <span style={{ display: 'inline-block', background: 'rgba(234, 88, 12, 0.12)', color: '#ea580c', padding: '3px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, marginTop: '4px' }}>
+                        {p.specialization || 'Specialist'}
+                      </span>
+                      {p.bio && (
+                        <p style={{ fontSize: '0.8rem', color: '#636366', marginTop: '8px', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {p.bio}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -279,15 +293,33 @@ const BookAppointment = () => {
           </motion.div>
         )}
 
-        {step === 3 && (
-          <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="glass-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Select Date & Time</h2>
-              <button onClick={() => setStep(2)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Back</button>
+        {/* STEP 2: SELECT DATE & AVAILABLE SLOTS */}
+        {step === 2 && selectedProvider && (
+          <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="glass-card" style={{ padding: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Select Date & Available Slots</h2>
+              <button onClick={() => setStep(1)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
+                Change Faculty
+              </button>
             </div>
 
+            {/* Faculty Info Header Card */}
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', background: 'rgba(255,255,255,0.7)', padding: '20px', borderRadius: '18px', marginBottom: '30px', border: '1px solid var(--glass-border)' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.4rem' }}>
+                {selectedProvider.avatar ? <img src={`${axios.defaults.baseURL}${selectedProvider.avatar}`} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : selectedProvider.name.charAt(0)}
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>{selectedProvider.title || ''} {selectedProvider.name}</h3>
+                <span style={{ display: 'inline-block', background: 'rgba(234, 88, 12, 0.12)', color: '#ea580c', padding: '3px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, marginTop: '2px' }}>
+                  {selectedProvider.specialization}
+                </span>
+                {selectedProvider.bio && <p style={{ fontSize: '0.82rem', color: '#636366', marginTop: '6px' }}>{selectedProvider.bio}</p>}
+              </div>
+            </div>
+
+            {/* Date Picker */}
             <div className="form-group" style={{ marginBottom: '30px' }}>
-              <label className="form-label">Appointment Date</label>
+              <label className="form-label">Select Date for Appointment</label>
               <input
                 type="date"
                 className="form-control"
@@ -295,79 +327,91 @@ const BookAppointment = () => {
                 min={new Date().toISOString().split('T')[0]}
                 onChange={(e) => handleDateChange(e.target.value)}
                 required
+                style={{ padding: '14px 20px', fontSize: '1rem' }}
               />
             </div>
 
+            {/* Available Time Slots Grid */}
             {selectedDate && (
               <div>
-                <label className="form-label" style={{ fontWeight: 700, marginBottom: '15px' }}>Vacant Slots</label>
+                <label className="form-label" style={{ fontWeight: 800, marginBottom: '15px', display: 'block' }}>
+                  Available Vacant Slots on {selectedDate}
+                </label>
                 {loading ? (
-                  <p>Calculating slots...</p>
+                  <p style={{ color: '#8e8e93', fontSize: '0.9rem' }}>Calculating available slots...</p>
                 ) : availableSlots.length === 0 ? (
-                  <p style={{ color: '#8e8e93', fontSize: '0.9rem' }}>No open vacancies on this day.</p>
+                  <div style={{ background: 'rgba(255,255,255,0.5)', padding: '25px', borderRadius: '15px', textAlign: 'center' }}>
+                    <p style={{ color: '#8e8e93', fontSize: '0.9rem' }}>No open time slots available for this date. Please try another day.</p>
+                  </div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '12px' }}>
-                    {availableSlots.map((slot, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setSelectedSlot(slot)}
-                        style={{
-                          padding: '10px 14px',
-                          borderRadius: '12px',
-                          border: selectedSlot === slot ? '2px solid #ea580c' : '1px solid var(--glass-border)',
-                          background: selectedSlot === slot ? 'rgba(234, 88, 12, 0.15)' : 'rgba(255,255,255,0.7)',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          textAlign: 'center',
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        {slot.start}
-                      </button>
-                    ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '12px' }}>
+                    {availableSlots.map((slot, idx) => {
+                      const isSelected = selectedSlot?.start === slot.start;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setSelectedSlot(slot)}
+                          style={{
+                            padding: '12px 16px',
+                            borderRadius: '14px',
+                            border: isSelected ? '2px solid #ea580c' : '1px solid var(--glass-border)',
+                            background: isSelected ? 'rgba(234, 88, 12, 0.18)' : 'rgba(255,255,255,0.7)',
+                            color: isSelected ? '#ea580c' : '#2c2c2e',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          {slot.start}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             )}
 
             {selectedSlot && (
-              <button onClick={() => setStep(4)} className="btn-primary" style={{ width: '100%', marginTop: '30px' }}>
-                Proceed to Details
+              <button onClick={() => setStep(3)} className="btn-primary" style={{ width: '100%', marginTop: '30px', padding: '14px' }}>
+                Proceed to Details ({selectedSlot.start} - {selectedSlot.end})
               </button>
             )}
           </motion.div>
         )}
 
-        {step === 4 && (
-          <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="glass-card">
+        {/* STEP 3: CONFIRMATION DETAILS */}
+        {step === 3 && selectedProvider && selectedSlot && (
+          <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="glass-card" style={{ padding: '30px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Submit Appointment Details</h2>
-              <button onClick={() => setStep(3)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Back</button>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Confirm Appointment Request</h2>
+              <button onClick={() => setStep(2)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Back</button>
             </div>
 
-            <div style={{ background: 'rgba(255,255,255,0.6)', padding: '20px', borderRadius: '15px', marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div><strong>Department:</strong> {selectedDept?.name}</div>
-              <div><strong>Provider:</strong> {selectedProvider?.title || ''} {selectedProvider?.name} ({selectedProvider?.specialization})</div>
-              <div><strong>Scheduled Slot:</strong> {selectedDate} at {selectedSlot?.start} - {selectedSlot?.end}</div>
+            {/* Summary Box */}
+            <div style={{ background: 'rgba(255,255,255,0.7)', padding: '20px', borderRadius: '18px', marginBottom: '25px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div><strong>Faculty:</strong> {selectedProvider.title || ''} {selectedProvider.name} ({selectedProvider.specialization})</div>
+              <div><strong>Scheduled Date:</strong> {selectedDate}</div>
+              <div><strong>Scheduled Time Slot:</strong> {selectedSlot.start} - {selectedSlot.end}</div>
             </div>
 
             <form onSubmit={handleConfirmBooking}>
               <div className="form-group">
-                <label className="form-label">Brief Reason for Booking</label>
+                <label className="form-label">Brief Reason for Appointment</label>
                 <textarea
                   className="form-control"
                   rows={4}
-                  placeholder="Explain consultation context, department queries, syllabus checkups, or legal cases..."
+                  placeholder="Explain consultation topic, academic advising, clinical checkup, or session requirements..."
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   required
-                  style={{ resize: 'none' }}
+                  style={{ resize: 'none', padding: '15px' }}
                 />
               </div>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '10px' }} disabled={loading}>
-                {loading ? 'Submitting request...' : 'Confirm and Book Session'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '15px', padding: '14px' }} disabled={loading}>
+                {loading ? 'Submitting request...' : 'Confirm & Book Appointment'}
               </button>
             </form>
           </motion.div>
