@@ -1,23 +1,59 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [themeMode, setThemeMode] = useState('light'); // default 'light', supports customizable pastel tones
+  const [theme, setTheme] = useState({
+    siteLogo: '',
+    siteName: 'Schedulify',
+    primaryColor: '#ea580c',
+    secondaryColor: '#ffedd5',
+    themeMode: 'light',
+  });
 
-  const toggleTheme = () => {
-    setThemeMode((prev) => (prev === 'light' ? 'dark' : 'light'));
+  const fetchThemeSettings = async () => {
+    try {
+      const res = await axios.get('/api/settings/public');
+      if (res.data.success && res.data.settings) {
+        applyTheme(res.data.settings);
+      }
+    } catch (err) {
+      console.error('Error fetching public theme settings:', err.message);
+    }
+  };
+
+  const applyTheme = (settings) => {
+    setTheme(settings);
+
+    // Apply CSS variables on document root
+    const root = document.documentElement;
+    if (settings.primaryColor) {
+      root.style.setProperty('--saffron', settings.primaryColor);
+      root.style.setProperty('--theme-primary', settings.primaryColor);
+    }
+    if (settings.secondaryColor) {
+      root.style.setProperty('--theme-secondary', settings.secondaryColor);
+    }
+
+    if (settings.themeMode === 'dark') {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  };
+
+  useEffect(() => {
+    fetchThemeSettings();
+  }, []);
+
+  const updateTheme = (newSettings) => {
+    applyTheme({ ...theme, ...newSettings });
   };
 
   return (
-    <ThemeContext.Provider value={{ themeMode, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, updateTheme, fetchThemeSettings }}>
       {children}
-      {/* Dynamic colorful blobs that render globally in the background */}
-      <div className="bg-blobs">
-        <div className="blob blob-1"></div>
-        <div className="blob blob-2"></div>
-        <div className="blob blob-3"></div>
-      </div>
     </ThemeContext.Provider>
   );
 };

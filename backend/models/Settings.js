@@ -40,6 +40,26 @@ const settingsSchema = new mongoose.Schema(
       type: String,
       default: 'noreply@appointmentscheduler.com',
     },
+    siteLogo: {
+      type: String,
+      default: '',
+    },
+    siteName: {
+      type: String,
+      default: 'Schedulify',
+    },
+    primaryColor: {
+      type: String,
+      default: '#ea580c',
+    },
+    secondaryColor: {
+      type: String,
+      default: '#ffedd5',
+    },
+    themeMode: {
+      type: String,
+      default: 'light',
+    },
   },
   {
     timestamps: true,

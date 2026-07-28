@@ -54,6 +54,10 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
+// Public theme & branding settings
+const { getPublicSettings } = require('./controllers/adminController');
+app.get('/api/settings/public', getPublicSettings);
+
 // Test API status
 app.get('/api/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is running smoothly' });

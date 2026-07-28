@@ -17,6 +17,30 @@ exports.getSettings = async (req, res) => {
   }
 };
 
+// @desc    Get public theme & branding settings
+// @route   GET /api/settings/public
+// @access  Public
+exports.getPublicSettings = async (req, res) => {
+  try {
+    let settings = await Settings.findOne({ key: 'platform_settings' });
+    if (!settings) {
+      settings = await Settings.create({ key: 'platform_settings' });
+    }
+    res.status(200).json({
+      success: true,
+      settings: {
+        siteLogo: settings.siteLogo || '',
+        siteName: settings.siteName || 'Schedulify',
+        primaryColor: settings.primaryColor || '#ea580c',
+        secondaryColor: settings.secondaryColor || '#ffedd5',
+        themeMode: settings.themeMode || 'light',
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Update platform settings
 // @route   PUT /api/admin/settings
 // @access  Private/Admin
@@ -36,6 +60,11 @@ exports.updateSettings = async (req, res) => {
       'smtpUser',
       'smtpPass',
       'smtpFrom',
+      'siteLogo',
+      'siteName',
+      'primaryColor',
+      'secondaryColor',
+      'themeMode',
     ];
 
     fields.forEach((field) => {

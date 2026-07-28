@@ -40,6 +40,14 @@ const appointmentSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    meetingLink: {
+      type: String,
+      default: '',
+    },
+    rejectionReason: {
+      type: String,
+      default: '',
+    },
     rescheduleHistory: [
       {
         previousDate: String,

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import {
   PixelCalendar,
   PixelUser,
@@ -43,6 +44,7 @@ ChartJS.register(
 
 const Dashboard = () => {
   const { user, logout, updateProfile } = useAuth();
+  const { theme, updateTheme } = useTheme();
   const navigate = useNavigate();
 
   const getRoleContext = () => {
@@ -80,6 +82,13 @@ const Dashboard = () => {
   const [systemUsers, setSystemUsers] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
+  // Theme & Branding states
+  const [siteLogoInput, setSiteLogoInput] = useState('');
+  const [siteNameInput, setSiteNameInput] = useState('Schedulify');
+  const [primaryColorInput, setPrimaryColorInput] = useState('#ea580c');
+  const [secondaryColorInput, setSecondaryColorInput] = useState('#ffedd5');
+  const [themeModeInput, setThemeModeInput] = useState('light');
+
   // UI state
   const [loading, setLoading] = useState(true);
   const [notifDropdown, setNotifDropdown] = useState(false);
@@ -89,6 +98,10 @@ const Dashboard = () => {
   const [rescheduleEnd, setRescheduleEnd] = useState('');
   const [meetingNotesTarget, setMeetingNotesTarget] = useState(null);
   const [meetingNotesContent, setMeetingNotesContent] = useState('');
+  const [acceptTarget, setAcceptTarget] = useState(null);
+  const [acceptMeetLink, setAcceptMeetLink] = useState('');
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejectReasonText, setRejectReasonText] = useState('');
 
 
 
@@ -207,6 +220,16 @@ const Dashboard = () => {
       navigate('/login');
     }
   }, [user]);
+
+  useEffect(() => {
+    if (theme) {
+      setSiteLogoInput(theme.siteLogo || '');
+      setSiteNameInput(theme.siteName || 'Schedulify');
+      setPrimaryColorInput(theme.primaryColor || '#ea580c');
+      setSecondaryColorInput(theme.secondaryColor || '#ffedd5');
+      setThemeModeInput(theme.themeMode || 'light');
+    }
+  }, [theme]);
 
   // Handle Log Out
   const handleLogout = async () => {
@@ -342,6 +365,80 @@ const Dashboard = () => {
     }
   };
 
+  // Save Theme & Branding settings (Admin)
+  const handleSaveTheme = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.put('/api/admin/settings', {
+        siteLogo: siteLogoInput,
+        siteName: siteNameInput,
+        primaryColor: primaryColorInput,
+        secondaryColor: secondaryColorInput,
+        themeMode: themeModeInput,
+      });
+      if (res.data.success) {
+        toast.success('Theme & Logo settings saved successfully!');
+        updateTheme({
+          siteLogo: siteLogoInput,
+          siteName: siteNameInput,
+          primaryColor: primaryColorInput,
+          secondaryColor: secondaryColorInput,
+          themeMode: themeModeInput,
+        });
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update theme settings');
+    }
+  };
+
+  // Open Accept Modal (Provider/Staff)
+  const openAcceptModal = (appt) => {
+    setAcceptTarget(appt);
+    const randomCode = Math.random().toString(36).substring(2, 6) + '-' + Math.random().toString(36).substring(2, 5);
+    setAcceptMeetLink(`https://meet.google.com/sch-${randomCode}`);
+  };
+
+  // Submit Accept
+  const submitAccept = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.put(`/api/appointments/${acceptTarget._id}/accept`, {
+        meetingLink: acceptMeetLink,
+      });
+      if (res.data.success) {
+        toast.success('Appointment accepted with Google Meet link!');
+        setAcceptTarget(null);
+        fetchData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to accept appointment');
+    }
+  };
+
+  // Open Reject Modal (Provider/Staff)
+  const openRejectModal = (appt) => {
+    setRejectTarget(appt);
+    setRejectReasonText('');
+  };
+
+  // Submit Reject
+  const submitReject = async (e) => {
+    e.preventDefault();
+    if (!rejectReasonText) return toast.error('Please specify a rejection reason');
+    try {
+      const res = await axios.put(`/api/appointments/${rejectTarget._id}/reject`, {
+        rejectionReason: rejectReasonText,
+      });
+      if (res.data.success) {
+        toast.success('Appointment rejected');
+        setRejectTarget(null);
+        fetchData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to reject appointment');
+    }
+  };
+
   // Open Reschedule Modal
   const openReschedule = (appt) => {
     setRescheduleTarget(appt);
@@ -390,6 +487,30 @@ const Dashboard = () => {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update notes');
     }
+  };
+
+  // Helper to check if appointment time has arrived
+  const isMeetingTime = (dateStr, startTimeStr) => {
+    if (!dateStr || !startTimeStr) return false;
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    if (dateStr > todayStr) {
+      return false; // Future date -> not time yet
+    }
+    if (dateStr < todayStr) {
+      return true; // Past date -> meeting date has arrived/passed
+    }
+
+    // Today: check if current time HH:MM is >= start time HH:MM
+    const currentHours = String(now.getHours()).padStart(2, '0');
+    const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTimeStr = `${currentHours}:${currentMinutes}`;
+
+    return currentTimeStr >= startTimeStr;
   };
 
   // Save Availability slots
@@ -495,8 +616,12 @@ const Dashboard = () => {
       }}>
         {/* Left Side: Logo & Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <PixelCalendar size={28} color="#ea580c" />
-          <span style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'Outfit' }}>Schedulify</span>
+          {theme.siteLogo ? (
+            <img src={theme.siteLogo} alt="Logo" style={{ height: '32px', borderRadius: '6px', objectFit: 'contain' }} />
+          ) : (
+            <PixelCalendar size={28} color={theme.primaryColor || '#ea580c'} />
+          )}
+          <span style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'Outfit' }}>{theme.siteName || 'Schedulify'}</span>
         </div>
 
         {/* Center: Navigation buttons */}
@@ -615,6 +740,26 @@ const Dashboard = () => {
           >
             <PixelSettings size={16} color="#ea580c" /> Profile
           </button>
+
+          {user?.role === 'Admin' && (
+            <button
+              onClick={() => setActiveTab('theme')}
+              className={`btn-secondary ${activeTab === 'theme' ? 'active-tab' : ''}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: '12px',
+                border: 'none',
+                background: activeTab === 'theme' ? 'rgba(255,255,255,0.8)' : 'transparent',
+                fontWeight: 600,
+                fontSize: '0.9rem'
+              }}
+            >
+              <PixelSettings size={16} color="#ea580c" /> Theme & Logo
+            </button>
+          )}
 
           {/* Profile Button */}
         </div>
@@ -914,6 +1059,49 @@ const Dashboard = () => {
                             )}
                           </div>
                           <div style={{ fontSize: '0.85rem', color: '#636366', marginTop: '4px' }}>Reason: {appt.reason}</div>
+                          
+                          {/* Google Meet Link Banner (If Approved - Shown only when appointment time has come) */}
+                          {appt.status === 'Approved' && appt.meetingLink && (
+                            <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                              {isMeetingTime(appt.date, appt.timeSlot?.start) ? (
+                                <>
+                                  <a
+                                    href={appt.meetingLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn-primary"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '8px',
+                                      background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                                      padding: '8px 16px',
+                                      fontSize: '0.85rem',
+                                      textDecoration: 'none',
+                                      color: '#fff',
+                                      borderRadius: '12px',
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    Join Google Meet
+                                  </a>
+                                  <span style={{ fontSize: '0.75rem', color: '#636366' }}>{appt.meetingLink}</span>
+                                </>
+                              ) : (
+                                <div style={{ fontSize: '0.8rem', color: '#0284c7', background: 'rgba(2, 132, 199, 0.1)', padding: '6px 14px', borderRadius: '10px', fontWeight: 600 }}>
+                                  Meeting link will activate when appointment time arrives ({appt.date} at {appt.timeSlot?.start})
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Rejection Reason Badge (If Rejected) */}
+                          {appt.status === 'Rejected' && (
+                            <div style={{ fontSize: '0.82rem', background: '#fee2e2', color: '#b91c1c', padding: '6px 12px', borderRadius: '8px', marginTop: '8px', fontWeight: 600 }}>
+                              Rejection Reason: {appt.rejectionReason || 'Provider unavailable for this time slot'}
+                            </div>
+                          )}
+
                           {appt.meetingNotes && (
                             <div style={{ fontSize: '0.8rem', background: 'rgba(56,189,248,0.1)', padding: '6px 12px', borderRadius: '8px', marginTop: '10px', fontStyle: 'italic' }}>
                               Notes: {appt.meetingNotes}
@@ -922,26 +1110,32 @@ const Dashboard = () => {
                         </div>
 
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {/* Provider/Staff Accept or Reject */}
                           {appt.status === 'Pending' && ['Provider', 'Admin', 'University Coordinator', 'Receptionist'].includes(user?.role) && (
                             <>
-                              <button onClick={() => handleAppointmentAction(appt._id, 'accept')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#34d399' }}>Accept</button>
-                              <button onClick={() => handleAppointmentAction(appt._id, 'reject')} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#fca5a5', border: 'none' }}>Reject</button>
+                              <button onClick={() => openAcceptModal(appt)} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#34d399' }}>Accept</button>
+                              <button onClick={() => openRejectModal(appt)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#fca5a5', color: '#7f1d1d', border: 'none' }}>Reject</button>
                             </>
                           )}
 
+                          {/* Complete Action (Provider/Staff on Approved) */}
                           {appt.status === 'Approved' && ['Provider', 'Admin', 'University Coordinator', 'Receptionist'].includes(user?.role) && (
-                            <button onClick={() => handleAppointmentAction(appt._id, 'complete')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#a78bfa' }}>Complete</button>
+                            <button onClick={() => handleAppointmentAction(appt._id, 'complete')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#a78bfa' }}>Mark Completed</button>
                           )}
 
+                          {/* Notes Action */}
                           {['Provider', 'Admin'].includes(user?.role) && (
                             <button onClick={() => openMeetingNotes(appt)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Notes</button>
                           )}
 
-                          {['Pending', 'Approved', 'Rescheduled'].includes(appt.status) && (
-                            <>
-                              <button onClick={() => openReschedule(appt)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Reschedule</button>
-                              <button onClick={() => handleAppointmentAction(appt._id, 'cancel')} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', border: 'none' }}>Cancel</button>
-                            </>
+                          {/* Reschedule Action: ONLY FOR NORMAL USER (CUSTOMER) ON REJECTED OR PENDING APPOINTMENTS */}
+                          {user?.role === 'Customer' && ['Rejected', 'Pending'].includes(appt.status) && (
+                            <button onClick={() => openReschedule(appt)} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#ea580c' }}>Reschedule Slot</button>
+                          )}
+
+                          {/* Cancel Action */}
+                          {['Pending', 'Approved'].includes(appt.status) && (
+                            <button onClick={() => handleAppointmentAction(appt._id, 'cancel')} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', border: 'none' }}>Cancel</button>
                           )}
                         </div>
                       </div>
@@ -1155,7 +1349,183 @@ const Dashboard = () => {
               </div>
             </motion.div>
           )}
+
+          {activeTab === 'theme' && user?.role === 'Admin' && (
+            <motion.div key="theme" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}>
+              <div className="glass-card" style={{ maxWidth: '700px', margin: '0 auto', padding: '35px' }}>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '25px' }}>Site Logo & Color Palette Theme</h3>
+                
+                <form onSubmit={handleSaveTheme}>
+                  {/* Site Title */}
+                  <div className="form-group" style={{ marginBottom: '20px' }}>
+                    <label className="form-label">Platform / Site Name</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Schedulify"
+                      value={siteNameInput}
+                      onChange={(e) => setSiteNameInput(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  {/* Site Logo */}
+                  <div className="form-group" style={{ marginBottom: '25px' }}>
+                    <label className="form-label">Site Logo Image URL</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="https://example.com/my-custom-logo.png"
+                      value={siteLogoInput}
+                      onChange={(e) => setSiteLogoInput(e.target.value)}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: '#636366', marginTop: '4px', display: 'block' }}>
+                      Enter a direct image URL for your brand logo. Leave empty to use default icon logo.
+                    </span>
+                  </div>
+
+                  {/* Preset Color Swatches */}
+                  <div className="form-group" style={{ marginBottom: '25px' }}>
+                    <label className="form-label">Primary Color Theme</label>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '10px' }}>
+                      {[
+                        { name: 'Saffron Orange', primary: '#ea580c', secondary: '#ffedd5' },
+                        { name: 'Ocean Blue', primary: '#0284c7', secondary: '#e0f2fe' },
+                        { name: 'Emerald Green', primary: '#059669', secondary: '#d1fae5' },
+                        { name: 'Royal Violet', primary: '#7c3aed', secondary: '#f3e8ff' },
+                        { name: 'Crimson Rose', primary: '#e11d48', secondary: '#ffe4e6' },
+                      ].map((preset) => {
+                        const isSelected = primaryColorInput === preset.primary;
+                        return (
+                          <button
+                            key={preset.primary}
+                            type="button"
+                            onClick={() => {
+                              setPrimaryColorInput(preset.primary);
+                              setSecondaryColorInput(preset.secondary);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '10px 16px',
+                              borderRadius: '12px',
+                              border: isSelected ? `2px solid ${preset.primary}` : '1px solid var(--glass-border)',
+                              background: isSelected ? preset.secondary : 'rgba(255,255,255,0.7)',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              fontSize: '0.85rem',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: preset.primary, display: 'inline-block' }}></span>
+                            {preset.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Custom Hex Color Picker */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
+                    <div className="form-group">
+                      <label className="form-label">Custom Primary Color Code (Hex)</label>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          value={primaryColorInput}
+                          onChange={(e) => setPrimaryColorInput(e.target.value)}
+                          style={{ width: '45px', height: '42px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={primaryColorInput}
+                          onChange={(e) => setPrimaryColorInput(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Background Theme Format</label>
+                      <select
+                        className="form-control"
+                        value={themeModeInput}
+                        onChange={(e) => setThemeModeInput(e.target.value)}
+                      >
+                        <option value="light">Glassmorphism Light (Default)</option>
+                        <option value="dark">Dark Theme</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ width: '100%', padding: '14px', marginTop: '10px' }}>
+                    Save Theme & Branding
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
+
+        {/* Modal: Accept Appointment (Google Meet Link) */}
+        {acceptTarget && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+            <motion.div className="glass-card" style={{ width: '450px', background: '#fff' }} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '15px' }}>Accept Appointment</h3>
+              <p style={{ fontSize: '0.85rem', color: '#636366', marginBottom: '15px' }}>
+                Provide or confirm the Google Meeting link for {acceptTarget.customer?.name}
+              </p>
+              <form onSubmit={submitAccept}>
+                <div className="form-group">
+                  <label className="form-label">Google Meet Link</label>
+                  <input
+                    type="url"
+                    className="form-control"
+                    placeholder="https://meet.google.com/abc-defg-hij"
+                    value={acceptMeetLink}
+                    onChange={(e) => setAcceptMeetLink(e.target.value)}
+                    required
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
+                  <button type="submit" className="btn-primary" style={{ flex: 1, background: '#34d399' }}>Confirm & Accept</button>
+                  <button type="button" onClick={() => setAcceptTarget(null)} className="btn-secondary" style={{ flex: 1, border: 'none', background: 'rgba(0,0,0,0.05)' }}>Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Modal: Reject Appointment (With Reason) */}
+        {rejectTarget && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+            <motion.div className="glass-card" style={{ width: '450px', background: '#fff' }} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '15px' }}>Reject Appointment</h3>
+              <p style={{ fontSize: '0.85rem', color: '#636366', marginBottom: '15px' }}>
+                State reason for declining session request with {rejectTarget.customer?.name}
+              </p>
+              <form onSubmit={submitReject}>
+                <div className="form-group">
+                  <label className="form-label">Rejection Reason</label>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    placeholder="e.g. Schedule conflict, out of office, please pick another available slot..."
+                    value={rejectReasonText}
+                    onChange={(e) => setRejectReasonText(e.target.value)}
+                    required
+                    style={{ resize: 'none' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
+                  <button type="submit" className="btn-primary" style={{ flex: 1, background: '#ef4444' }}>Confirm & Reject</button>
+                  <button type="button" onClick={() => setRejectTarget(null)} className="btn-secondary" style={{ flex: 1, border: 'none', background: 'rgba(0,0,0,0.05)' }}>Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
 
         {/* Modal: Reschedule Appointment */}
         {rescheduleTarget && (

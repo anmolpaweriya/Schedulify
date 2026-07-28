@@ -112,11 +112,11 @@ const BookAppointment = () => {
             const startStr = minutesToTime(current);
             const endStr = minutesToTime(current + slotMinutes);
 
-            // Verify if slot is already occupied
+            // Verify if slot is already occupied by any booking (Pending, Approved, Rescheduled, or Completed)
             const isBooked = bookedAppointments.some(
               (appt) =>
                 appt.timeSlot.start === startStr &&
-                ['Pending', 'Approved', 'Rescheduled'].includes(appt.status)
+                ['Pending', 'Approved', 'Rescheduled', 'Completed'].includes(appt.status)
             );
 
             if (!isBooked) {

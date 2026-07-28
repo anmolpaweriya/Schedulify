@@ -35,7 +35,7 @@ exports.bookAppointment = async (req, res) => {
       provider: providerId,
       date,
       'timeSlot.start': startTime,
-      status: { $in: ['Pending', 'Approved', 'Rescheduled'] },
+      status: { $in: ['Pending', 'Approved', 'Rescheduled', 'Completed'] },
     });
 
     if (existing) {
@@ -88,12 +88,18 @@ exports.getAppointments = async (req, res) => {
     const { status, date, providerId } = req.query;
     let query = {};
 
-    // Filter by role
-    const userId = req.user._id || req.user.id;
-    if (req.user.role === 'Customer') {
-      query.customer = userId;
-    } else if (req.user.role === 'Provider') {
-      query.provider = userId;
+    // If providerId is specified (e.g. checking slot availability during booking),
+    // query by providerId to return all booked slots for that provider
+    if (providerId) {
+      query.provider = providerId;
+    } else {
+      // Filter by role for personal dashboard list
+      const userId = req.user._id || req.user.id;
+      if (req.user.role === 'Customer') {
+        query.customer = userId;
+      } else if (req.user.role === 'Provider') {
+        query.provider = userId;
+      }
     }
     // Admin, Receptionist, University Coordinator can view all platform appointments
 
@@ -102,9 +108,6 @@ exports.getAppointments = async (req, res) => {
     }
     if (date) {
       query.date = date;
-    }
-    if (providerId) {
-      query.provider = providerId;
     }
 
     const appointments = await Appointment.find(query)
@@ -163,16 +166,20 @@ exports.acceptAppointment = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to approve this appointment' });
     }
 
+    const { meetingLink } = req.body;
+    const gMeetUrl = meetingLink || `https://meet.google.com/sch-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+
     appointment.status = 'Approved';
+    appointment.meetingLink = gMeetUrl;
     await appointment.save();
 
     // Send notifications
-    const msg = `Your appointment with ${appointment.provider.title || ''} ${appointment.provider.name} on ${appointment.date} at ${appointment.timeSlot.start} has been approved.`;
+    const msg = `Your appointment with ${appointment.provider.title || ''} ${appointment.provider.name} on ${appointment.date} at ${appointment.timeSlot.start} has been approved. Google Meet: ${gMeetUrl}`;
     await createNotification(appointment.customer._id, 'Appointment Approved', msg);
 
     await sendEmail({
       to: appointment.customer.email,
-      subject: 'Appointment Confirmed',
+      subject: 'Appointment Confirmed - Google Meet Link',
       text: msg,
     });
 
@@ -200,11 +207,15 @@ exports.rejectAppointment = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to reject this appointment' });
     }
 
+    const { rejectionReason } = req.body;
+    const reasonText = rejectionReason || 'Provider unavailable for this time slot';
+
     appointment.status = 'Rejected';
+    appointment.rejectionReason = reasonText;
     await appointment.save();
 
     // Send notifications
-    const msg = `Your appointment request with ${appointment.provider.title || ''} ${appointment.provider.name} on ${appointment.date} at ${appointment.timeSlot.start} has been declined.`;
+    const msg = `Your appointment request with ${appointment.provider.title || ''} ${appointment.provider.name} on ${appointment.date} at ${appointment.timeSlot.start} has been declined. Reason: ${reasonText}`;
     await createNotification(appointment.customer._id, 'Appointment Declined', msg);
 
     await sendEmail({
@@ -349,12 +360,13 @@ exports.rescheduleAppointment = async (req, res) => {
 
     appointment.date = newDate;
     appointment.timeSlot = { start: startTime, end: endTime };
-    appointment.status = 'Rescheduled';
+    appointment.status = 'Pending';
+    appointment.rejectionReason = '';
 
     await appointment.save();
 
     // Notify BOTH sides
-    const msg = `Appointment has been rescheduled to ${newDate} at ${startTime} by ${req.user.name}.`;
+    const msg = `Appointment has been rescheduled to ${newDate} at ${startTime} by ${req.user.name}. Awaiting provider confirmation.`;
     await createNotification(appointment.customer._id, 'Appointment Rescheduled', msg);
     await createNotification(appointment.provider._id, 'Appointment Rescheduled', msg);
 

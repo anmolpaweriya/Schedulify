@@ -2,9 +2,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import {
   PixelCalendar,
-  PixelUser,
   PixelDoctor,
   PixelUniversity,
   PixelOffice,
@@ -12,6 +12,7 @@ import {
 
 const LandingPage = () => {
   const { user } = useAuth();
+  const { theme } = useTheme();
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -51,9 +52,13 @@ const LandingPage = () => {
         transition={{ duration: 0.8 }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <PixelCalendar size={32} color="#f97316" />
+          {theme.siteLogo ? (
+            <img src={theme.siteLogo} alt="Logo" style={{ height: '36px', borderRadius: '6px', objectFit: 'contain' }} />
+          ) : (
+            <PixelCalendar size={32} color={theme.primaryColor || '#ea580c'} />
+          )}
           <span style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'Outfit', letterSpacing: '-0.5px' }}>
-            Schedulify
+            {theme.siteName || 'Schedulify'}
           </span>
         </div>
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
