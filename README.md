@@ -49,7 +49,7 @@ appointment-saas/
 
 1. Clone or navigate to the directory:
    ```bash
-   cd C:/Users/aarya/.gemini/antigravity/scratch/appointment-saas
+   cd C:/Users/aarya/appointment-saas
    ```
 
 2. Install all dependencies for root, backend, and frontend concurrently:
@@ -77,11 +77,6 @@ appointment-saas/
 You can log in immediately using the following accounts:
 
 - **System Administrator**: `admin@gmail.com` (Password: `admin@123`)
-- **University Coordinator**: `coordinator@gmail.com` (Password: `password123`)
-- **Receptionist**: `receptionist@gmail.com` (Password: `password123`)
-- **Provider 1 (Prof. Alan Turing)**: `alan@gmail.com` (Password: `password123`)
-- **Provider 2 (Dr. Elizabeth Blackwell)**: `elizabeth@gmail.com` (Password: `password123`)
-- **Customer**: `customer@gmail.com` (Password: `password123`)
 
 ---
 
