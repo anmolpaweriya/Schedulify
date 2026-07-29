@@ -1,10 +1,10 @@
 # Schedulify - Premium MERN SaaS Appointment Scheduler
 
-A complete, production-ready SaaS Appointment Scheduling Platform featuring a visionOS-inspired glassmorphism theme, SVG pixel art icons, and responsive layouts. Designed for universities, hospitals, corporate offices, lawyers, and freelancers.
+A complete, production-ready SaaS Appointment Scheduling Platform . Designed for universities, hospitals, corporate offices, lawyers, and freelancers.
 
 ## 🚀 Tech Stack
 
-- **Frontend**: React.js, JavaScript, React Router DOM, Axios, Context API, Vanilla CSS (macOS Sonoma / VisionOS glassmorphic style), Framer Motion, React Icons, Chart.js, React Toastify.
+- **Frontend**: React.js, JavaScript, React Router DOM, Axios, Context API,, Framer Motion, React Icons, Chart.js, React Toastify.
 - **Backend**: Node.js, Express.js, JWT Authentication, bcrypt, Multer, Nodemailer, Cookie Parser, Morgan, Helmet.
 - **Database**: MongoDB & Mongoose.
 
