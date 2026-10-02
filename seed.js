@@ -1,6 +1,6 @@
 const mongoose = require('./backend/node_modules/mongoose');
 const dotenv = require('dotenv');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // Models
 const User = require('./backend/models/User');

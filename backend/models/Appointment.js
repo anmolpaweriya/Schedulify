@@ -13,16 +13,16 @@ const appointmentSchema = new mongoose.Schema(
       required: true,
     },
     date: {
-      type: String, // Format: "YYYY-MM-DD"
+      type: String,
       required: true,
     },
     timeSlot: {
       start: {
-        type: String, // Format: "10:30"
+        type: String,
         required: true,
       },
       end: {
-        type: String, // Format: "11:00"
+        type: String,
         required: true,
       },
     },
