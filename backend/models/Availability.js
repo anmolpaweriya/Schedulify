@@ -13,23 +13,23 @@ const availabilitySchema = new mongoose.Schema(
       default: 'Asia/Kolkata',
     },
     slotDuration: {
-      type: Number, // In minutes, default is 30 mins
+      type: Number,
       default: 30,
     },
     weeklyHours: [
       {
         dayOfWeek: {
-          type: Number, // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+          type: Number,
           required: true,
         },
         slots: [
           {
             start: {
-              type: String, // "09:00"
+              type: String,
               required: true,
             },
             end: {
-              type: String, // "12:00"
+              type: String,
               required: true,
             },
           },
@@ -42,7 +42,7 @@ const availabilitySchema = new mongoose.Schema(
     ],
     blockedDates: [
       {
-        type: String, // "YYYY-MM-DD"
+        type: String,
       },
     ],
   },
