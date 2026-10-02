@@ -89,7 +89,7 @@ erDiagram
     string name
     string email
     string password
-    string role "Admin | Provider | Customer | Receptionist | Coordinator"
+    string role "Admin | Provider | Customer "
     string status "Pending | Approved | Rejected"
     string specialization
     ObjectId department FK
@@ -141,8 +141,6 @@ erDiagram
 ### Appointments
 - `POST /api/appointments` - Schedule a new appointment (Customer)
 - `GET /api/appointments` - Fetch appointments list (filtered by role permissions)
-- `PUT /api/appointments/:id/accept` - Accept booking (Provider/Receptionist)
-- `PUT /api/appointments/:id/reject` - Decline booking (Provider/Receptionist)
 - `PUT /api/appointments/:id/reschedule` - Propose alternative slot
 - `PUT /api/appointments/:id/notes` - Add consultation notes (Provider)
 

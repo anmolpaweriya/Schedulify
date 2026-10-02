@@ -49,7 +49,7 @@ const Dashboard = () => {
 
   const getRoleContext = () => {
     if (user?.role === 'Admin') return { label: 'SaaS Administrator Hub', desc: 'Manage system configurations and user lists.', type: 'admin' };
-    
+
     // Customer roles
     if (user?.role === 'Customer') {
       if (user.dob || user.age || user.gender) {
@@ -203,7 +203,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (user) {
       fetchData();
-      
+
       // Populate profile states
       setProfName(user.name || '');
       setProfTitle(user.title || '');
@@ -594,7 +594,7 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
-      
+
       {/* Dynamic Background Blurs */}
       <div className="bg-blobs">
         <div className="blob blob-1"></div>
@@ -776,7 +776,7 @@ const Dashboard = () => {
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{user?.name}</div>
-              <div style={{ fontSize: '0.7rem', color: '#636366' }}>{user?.role}</div>
+              <div style={{ fontSize: '0.7rem', color: '#636366' }}>{user?.role?.toLowerCase() =="customer"?"User":"Faculty"}</div>
             </div>
           </div>
           <button onClick={handleLogout} className="btn-secondary" style={{ border: 'none', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '6px 12px', borderRadius: '10px', fontSize: '0.85rem' }}>
@@ -787,7 +787,7 @@ const Dashboard = () => {
 
       {/* Main Panel Content */}
       <main className="main-content">
-        
+
         {/* Top Navbar Header */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
           <div>
@@ -1059,7 +1059,7 @@ const Dashboard = () => {
                             )}
                           </div>
                           <div style={{ fontSize: '0.85rem', color: '#636366', marginTop: '4px' }}>Reason: {appt.reason}</div>
-                          
+
                           {/* Google Meet Link Banner (If Approved - Shown only when appointment time has come) */}
                           {appt.status === 'Approved' && appt.meetingLink && (
                             <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -1150,7 +1150,7 @@ const Dashboard = () => {
             <motion.div key="availability" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}>
               <div className="glass-card">
                 <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '25px' }}>Configure Calendar Availability</h3>
-                
+
                 <form onSubmit={handleSaveAvailability}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
                     <div className="form-group">
@@ -1182,7 +1182,7 @@ const Dashboard = () => {
                           <span style={{ width: '90px', fontWeight: 600 }}>
                             {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][wh.dayOfWeek]}
                           </span>
-                          
+
                           {wh.isActive && wh.slots.map((s, idx) => (
                             <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                               <input
@@ -1354,7 +1354,7 @@ const Dashboard = () => {
             <motion.div key="theme" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}>
               <div className="glass-card" style={{ maxWidth: '700px', margin: '0 auto', padding: '35px' }}>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '25px' }}>Site Logo & Color Palette Theme</h3>
-                
+
                 <form onSubmit={handleSaveTheme}>
                   {/* Site Title */}
                   <div className="form-group" style={{ marginBottom: '20px' }}>
@@ -1560,7 +1560,7 @@ const Dashboard = () => {
             <motion.div className="glass-card" style={{ width: '450px', background: '#fff' }} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '15px' }}>Meeting Notes</h3>
               <p style={{ fontSize: '0.85rem', color: '#636366', marginBottom: '15px' }}>Session with {meetingNotesTarget.customer.name}</p>
-              
+
               <div className="form-group">
                 <textarea
                   className="form-control"
@@ -1607,7 +1607,7 @@ const Dashboard = () => {
                     <option value="Rejected">Rejected</option>
                   </select>
                 </div>
-                
+
                 <h4 style={{ margin: '20px 0 10px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px', fontSize: '1rem', fontWeight: 700 }}>Demographics & Address</h4>
                 <div className="form-group">
                   <label className="form-label">Address</label>
