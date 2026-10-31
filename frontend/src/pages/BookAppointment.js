@@ -5,12 +5,13 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { PixelCalendar, PixelUser } from '../components/PixelIcons';
+import { BookingLoadingScreen, SlotSkeletonGrid } from '../components/SmoothLoader';
 
 const BookAppointment = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Booking Flow Steps: 1 = Choose Faculty, 2 = Date & Slot, 3 = Details & Confirm
+  // Booking Flow Steps: 1 = Choose Service Provider, 2 = Date & Slot, 3 = Details & Confirm
   const [step, setStep] = useState(1);
 
   // Lists & Search
@@ -25,6 +26,8 @@ const BookAppointment = () => {
   const [reason, setReason] = useState('');
 
   const [loading, setLoading] = useState(false);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -74,7 +77,7 @@ const BookAppointment = () => {
     if (!dateVal || !selectedProvider) return;
 
     try {
-      setLoading(true);
+      setLoadingSlots(true);
       
       // Fetch provider availability profile
       const availRes = await axios.get(`/api/users/providers/${selectedProvider._id}/availability`);
@@ -88,15 +91,15 @@ const BookAppointment = () => {
         const dayOfWeek = new Date(dateVal).getDay(); // 0 = Sun, 1 = Mon...
         
         // Check if date is in blocked dates
-        if (availability.blockedDates.includes(dateVal)) {
-          toast.warning('Faculty is out of office / unavailable on this date.');
+        if (availability.blockedDates && availability.blockedDates.includes(dateVal)) {
+          toast.warning('Service Provider is unavailable on this date.');
           return;
         }
 
         // Find matching weekly hours configuration
         const weeklyConfig = availability.weeklyHours.find((wh) => wh.dayOfWeek === dayOfWeek && wh.isActive);
         if (!weeklyConfig) {
-          toast.warning('Faculty has no available slots configured for this day of the week.');
+          toast.warning('Service Provider has no available booking slots for this day of the week.');
           return;
         }
 
@@ -135,7 +138,7 @@ const BookAppointment = () => {
     } catch (err) {
       toast.error('Could not fetch schedule availability');
     } finally {
-      setLoading(false);
+      setLoadingSlots(false);
     }
   };
 
@@ -160,7 +163,7 @@ const BookAppointment = () => {
     }
 
     try {
-      setLoading(true);
+      setBookingLoading(true);
       const res = await axios.post('/api/appointments', {
         providerId: selectedProvider._id,
         date: selectedDate,
@@ -176,7 +179,7 @@ const BookAppointment = () => {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit appointment booking');
     } finally {
-      setLoading(false);
+      setBookingLoading(false);
     }
   };
 
@@ -337,8 +340,11 @@ const BookAppointment = () => {
                 <label className="form-label" style={{ fontWeight: 800, marginBottom: '15px', display: 'block' }}>
                   Available Vacant Slots on {selectedDate}
                 </label>
-                {loading ? (
-                  <p style={{ color: '#8e8e93', fontSize: '0.9rem' }}>Calculating available slots...</p>
+                {loadingSlots ? (
+                  <div>
+                    <p style={{ color: '#8e8e93', fontSize: '0.9rem', marginBottom: '8px' }}>Checking real-time calendar availability...</p>
+                    <SlotSkeletonGrid count={8} />
+                  </div>
                 ) : availableSlots.length === 0 ? (
                   <div style={{ background: 'rgba(255,255,255,0.5)', padding: '25px', borderRadius: '15px', textAlign: 'center' }}>
                     <p style={{ color: '#8e8e93', fontSize: '0.9rem' }}>No open time slots available for this date. Please try another day.</p>
@@ -391,7 +397,7 @@ const BookAppointment = () => {
 
             {/* Summary Box */}
             <div style={{ background: 'rgba(255,255,255,0.7)', padding: '20px', borderRadius: '18px', marginBottom: '25px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div><strong>Faculty:</strong> {selectedProvider.title || ''} {selectedProvider.name} ({selectedProvider.specialization})</div>
+              <div><strong>Service Provider:</strong> {selectedProvider.title || ''} {selectedProvider.name} ({selectedProvider.specialization || selectedProvider.businessCategory || 'Specialist'})</div>
               <div><strong>Scheduled Date:</strong> {selectedDate}</div>
               <div><strong>Scheduled Time Slot:</strong> {selectedSlot.start} - {selectedSlot.end}</div>
             </div>
@@ -402,7 +408,7 @@ const BookAppointment = () => {
                 <textarea
                   className="form-control"
                   rows={4}
-                  placeholder="Explain consultation topic, academic advising, clinical checkup, or session requirements..."
+                  placeholder="Explain consultation topic, service requirements, or meeting details..."
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   required
@@ -410,14 +416,24 @@ const BookAppointment = () => {
                 />
               </div>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '15px', padding: '14px' }} disabled={loading}>
-                {loading ? 'Submitting request...' : 'Confirm & Book Appointment'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '15px', padding: '14px' }} disabled={bookingLoading}>
+                {bookingLoading ? 'Securing slot...' : 'Confirm & Book Appointment'}
               </button>
             </form>
           </motion.div>
         )}
 
       </AnimatePresence>
+
+      {/* Smooth Glassmorphic Loading Screen during Appointment Booking */}
+      <BookingLoadingScreen
+        isOpen={bookingLoading}
+        title="Securing Your Appointment..."
+        subtitle="Locking in your requested time slot & preparing email confirmations..."
+        providerName={selectedProvider ? `${selectedProvider.title || ''} ${selectedProvider.name}` : ''}
+        date={selectedDate}
+        timeSlot={selectedSlot ? `${selectedSlot.start} - ${selectedSlot.end}` : ''}
+      />
     </div>
   );
 };

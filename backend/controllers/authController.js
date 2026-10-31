@@ -44,7 +44,28 @@ const sendTokenResponse = (user, statusCode, res) => {
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role, title, specialization, bio, selectedDays, startTime, endTime } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      title,
+      specialization,
+      bio,
+      selectedDays,
+      startTime,
+      endTime,
+      businessType,
+      businessCategory,
+      businessName,
+      businessLocation,
+      timezone,
+      services,
+      businessHours,
+      phone,
+      bookingInterests,
+      preferredTiming,
+    } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -55,6 +76,7 @@ exports.register = async (req, res) => {
     // Determine verification settings
     const settings = await Settings.findOne({ key: 'platform_settings' });
     const requireEmailVerification = settings?.requireEmailVerification || false;
+    const requireProviderApproval = settings?.requireProviderApproval || false;
 
     // Create verification token if required
     let emailVerificationToken = undefined;
@@ -64,41 +86,89 @@ exports.register = async (req, res) => {
       emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
     }
 
-    // Create user
+    const assignedRole = role || 'Customer';
+    const initialStatus = assignedRole === 'Provider' ? (requireProviderApproval ? 'Pending' : 'Approved') : 'Approved';
+
+    // Create user with all onboarding details
     const user = await User.create({
       name,
       email,
       password,
-      role: role || 'Customer',
-      title: role === 'Provider' ? title : '',
-      specialization: role === 'Provider' ? specialization : '',
-      bio: role === 'Provider' ? bio : '',
+      role: assignedRole,
+      title: assignedRole === 'Provider' ? (title || (businessType === 'An Individual' ? 'Solo' : 'Admin')) : '',
+      specialization: assignedRole === 'Provider' ? (specialization || businessCategory || '') : '',
+      bio: assignedRole === 'Provider' ? (bio || businessName || '') : '',
+      businessType: businessType || '',
+      businessCategory: businessCategory || '',
+      businessName: businessName || '',
+      businessLocation: businessLocation || {},
+      timezone: timezone || 'Asia/Kolkata',
+      services: Array.isArray(services) ? services : [],
+      businessHours: Array.isArray(businessHours) ? businessHours : [],
+      phone: phone || '',
+      bookingInterests: Array.isArray(bookingInterests) ? bookingInterests : [],
+      preferredTiming: preferredTiming || '',
+      status: initialStatus,
       isEmailVerified: !requireEmailVerification,
       emailVerificationToken,
       emailVerificationExpire,
     });
 
-    // If Provider, initialize Availability based on configured days and hours
+    // If Provider / Administrator, initialize Availability based on business hours
     if (user.role === 'Provider') {
-      const activeDays = Array.isArray(selectedDays) && selectedDays.length > 0 ? selectedDays : [1, 2, 3, 4, 5];
-      const slotStart = startTime || '09:00';
-      const slotEnd = endTime || '17:00';
+      let weeklyHoursConfig = [];
 
-      const weeklyHoursConfig = [];
-      // Sunday=0, Monday=1, ..., Saturday=6
-      for (let day = 0; day <= 6; day++) {
-        const isActiveDay = activeDays.includes(day);
-        weeklyHoursConfig.push({
-          dayOfWeek: day,
-          slots: isActiveDay ? [{ start: slotStart, end: slotEnd }] : [],
-          isActive: isActiveDay,
+      if (Array.isArray(businessHours) && businessHours.length > 0) {
+        // Map configured business hours into weeklyHours (0=Sunday ... 6=Saturday)
+        const dayMap = {
+          sunday: 0,
+          monday: 1,
+          tuesday: 2,
+          wednesday: 3,
+          thursday: 4,
+          friday: 5,
+          saturday: 6,
+        };
+
+        // Initialize all 7 days as inactive
+        const daysArray = [0, 1, 2, 3, 4, 5, 6].map((d) => ({
+          dayOfWeek: d,
+          slots: [],
+          isActive: false,
+        }));
+
+        businessHours.forEach((bh) => {
+          const dIndex = typeof bh.dayOfWeek === 'number' ? bh.dayOfWeek : dayMap[String(bh.day).toLowerCase()];
+          if (dIndex !== undefined && daysArray[dIndex]) {
+            daysArray[dIndex].isActive = !!bh.isOpen;
+            if (bh.isOpen && bh.startTime && bh.endTime) {
+              daysArray[dIndex].slots = [{ start: bh.startTime, end: bh.endTime }];
+            }
+          }
         });
+
+        weeklyHoursConfig = daysArray;
+      } else {
+        const activeDays = Array.isArray(selectedDays) && selectedDays.length > 0 ? selectedDays : [1, 2, 3, 4, 5];
+        const slotStart = startTime || '09:00';
+        const slotEnd = endTime || '17:00';
+
+        for (let day = 0; day <= 6; day++) {
+          const isActiveDay = activeDays.includes(day);
+          weeklyHoursConfig.push({
+            dayOfWeek: day,
+            slots: isActiveDay ? [{ start: slotStart, end: slotEnd }] : [],
+            isActive: isActiveDay,
+          });
+        }
       }
+
+      const defaultSlotDuration = services && services[0] && services[0].duration ? Number(services[0].duration) : 30;
 
       await Availability.create({
         provider: user._id,
-        timezone: 'Asia/Kolkata',
-        slotDuration: 30,
+        timezone: timezone || 'Asia/Kolkata',
+        slotDuration: defaultSlotDuration,
         weeklyHours: weeklyHoursConfig,
       });
     }

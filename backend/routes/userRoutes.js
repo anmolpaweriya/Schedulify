@@ -12,7 +12,7 @@ const upload = require('../middleware/upload');
 
 const router = express.Router();
 
-router.get('/', protect, authorizeRoles('Admin', 'Receptionist', 'University Coordinator'), getUsers);
+router.get('/', protect, authorizeRoles('Admin', 'Receptionist'), getUsers);
 router.get('/providers', getProviders);
 router.get('/providers/:id/availability', getProviderAvailability);
 router.get('/:id', protect, getUser);

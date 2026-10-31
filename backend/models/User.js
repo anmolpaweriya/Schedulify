@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['Admin', 'Provider', 'Customer', 'Receptionist', 'University Coordinator'],
+      enum: ['Admin', 'Provider', 'Customer', 'Receptionist'],
       default: 'Customer',
     },
     avatar: {
@@ -51,6 +51,59 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    // Onboarding and business details
+    businessType: {
+      type: String, // 'An Individual', 'Multi Staff Business', 'Multi Location Business'
+      default: '',
+    },
+    businessCategory: {
+      type: String,
+      default: '',
+    },
+    businessName: {
+      type: String,
+      default: '',
+    },
+    businessLocation: {
+      address: { type: String, default: '' },
+      country: { type: String, default: 'India' },
+      region: { type: String, default: '' },
+      city: { type: String, default: '' },
+      zip: { type: String, default: '' },
+    },
+    timezone: {
+      type: String,
+      default: 'Asia/Kolkata',
+    },
+    services: [
+      {
+        title: { type: String, default: '' },
+        duration: { type: Number, default: 30 },
+        price: { type: Number, default: 0 },
+      },
+    ],
+    businessHours: [
+      {
+        day: { type: String },
+        dayOfWeek: { type: Number },
+        isOpen: { type: Boolean, default: true },
+        startTime: { type: String, default: '09:00' },
+        endTime: { type: String, default: '17:00' },
+      },
+    ],
+    phone: {
+      type: String,
+      default: '',
+    },
+    bookingInterests: [
+      {
+        type: String,
+      },
+    ],
+    preferredTiming: {
+      type: String,
+      default: '',
+    },
     dob: {
       type: String,
       default: '',
@@ -62,22 +115,6 @@ const userSchema = new mongoose.Schema(
     gender: {
       type: String,
       enum: ['', 'Male', 'Female', 'Other'],
-      default: '',
-    },
-    program: {
-      type: String,
-      default: '',
-    },
-    section: {
-      type: String,
-      default: '',
-    },
-    registrationNo: {
-      type: String,
-      default: '',
-    },
-    professionalId: {
-      type: String,
       default: '',
     },
     status: {

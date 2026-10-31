@@ -140,7 +140,7 @@ exports.updateUser = async (req, res) => {
 
     const {
       name, role, status, title, specialization, bio, avatar,
-      address, dob, age, gender, program, section, registrationNo, professionalId
+      address, dob, age, gender, phone, businessName, businessCategory, businessType, timezone
     } = req.body;
 
     if (name !== undefined) user.name = name;
@@ -154,10 +154,11 @@ exports.updateUser = async (req, res) => {
     if (dob !== undefined) user.dob = dob || '';
     if (age !== undefined) user.age = age || null;
     if (gender !== undefined) user.gender = gender || '';
-    if (program !== undefined) user.program = program || '';
-    if (section !== undefined) user.section = section || '';
-    if (registrationNo !== undefined) user.registrationNo = registrationNo || '';
-    if (professionalId !== undefined) user.professionalId = professionalId || '';
+    if (phone !== undefined) user.phone = phone || '';
+    if (businessName !== undefined) user.businessName = businessName || '';
+    if (businessCategory !== undefined) user.businessCategory = businessCategory || '';
+    if (businessType !== undefined) user.businessType = businessType || '';
+    if (timezone !== undefined) user.timezone = timezone || 'Asia/Kolkata';
 
     await user.save();
     res.status(200).json({ success: true, message: 'User details updated successfully', user });
