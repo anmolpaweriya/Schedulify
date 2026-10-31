@@ -45,6 +45,7 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     fetchThemeSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateTheme = (newSettings) => {

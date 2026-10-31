@@ -16,8 +16,8 @@ router.use(protect); // All routes require authentication
 router.get('/settings', authorizeRoles('Admin'), getSettings);
 router.put('/settings', authorizeRoles('Admin'), updateSettings);
 
-router.get('/providers/pending', authorizeRoles('Admin', 'University Coordinator'), getPendingProviders);
-router.put('/providers/:id/approve', authorizeRoles('Admin', 'University Coordinator'), approveProvider);
+router.get('/providers/pending', authorizeRoles('Admin'), getPendingProviders);
+router.put('/providers/:id/approve', authorizeRoles('Admin'), approveProvider);
 
 router.put('/users/:id', authorizeRoles('Admin'), updateUser);
 router.delete('/users/:id', authorizeRoles('Admin'), deleteUser);

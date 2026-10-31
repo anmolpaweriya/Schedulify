@@ -8,15 +8,21 @@ import { useTheme } from '../context/ThemeContext';
 import {
   PixelCalendar,
   PixelUser,
-  PixelDoctor,
-  PixelUniversity,
-  PixelOffice,
   PixelBell,
   PixelSettings,
   PixelAppointment,
-  PixelChat,
   PixelAnalytics,
 } from '../components/PixelIcons';
+
+// Lucide Icons
+import {
+  LuCamera,
+  LuPlus,
+  LuX,
+  LuCheck,
+  LuCircle,
+} from 'react-icons/lu';
+import { ConfirmAppointmentLoadingScreen } from '../components/SmoothLoader';
 
 // Chart.js imports
 import {
@@ -44,29 +50,38 @@ ChartJS.register(
 
 const Dashboard = () => {
   const { user, logout, updateProfile } = useAuth();
-  const { theme, updateTheme } = useTheme();
+  const { theme } = useTheme();
   const navigate = useNavigate();
 
+  const primaryColor = theme?.primaryColor || '#ea580c';
+  const secondaryColor = theme?.secondaryColor || '#ffedd5';
+
   const getRoleContext = () => {
-    if (user?.role === 'Admin') return { label: 'SaaS Administrator Hub', desc: 'Manage system configurations and user lists.', type: 'admin' };
+    if (user?.role === 'Admin') {
+      return {
+        label: 'Platform Administrator Hub',
+        desc: 'Manage system configurations, user accounts, and platform metrics.',
+        type: 'admin',
+      };
+    }
 
-    // Customer roles
     if (user?.role === 'Customer') {
-      if (user.dob || user.age || user.gender) {
-        return { label: 'Patient Portal Dashboard', desc: 'Schedule health appointments, view prescriptions, and sync consultation logs.', type: 'patient' };
-      }
-      if (user.program || user.registrationNo) {
-        return { label: 'Student Academic Dashboard', desc: 'Sync advising sessions, consult faculty, and manage syllabus syncs.', type: 'student' };
-      }
-      return { label: 'Client Consultancy Console', desc: 'Check advisory schedules and coordinate meeting alignments.', type: 'client' };
+      return {
+        label: 'Client Booking Dashboard',
+        desc: 'Browse available service providers, book appointments, and manage reservations.',
+        type: 'customer',
+      };
     }
 
-    // Provider roles
     if (user?.role === 'Provider') {
-      return { label: 'Advisory Management Console', desc: 'Schedule bookings, coordinate slots, and review client alignments.', type: 'officer' };
+      return {
+        label: user.businessName ? `${user.businessName} Console` : 'Service Provider Console',
+        desc: 'Manage customer bookings, services, schedule, and business hours.',
+        type: 'provider',
+      };
     }
 
-    return { label: 'Dashboard Hub', desc: 'Manage your active schedules.', type: 'default' };
+    return { label: 'Dashboard Hub', desc: 'Manage your active schedules and appointments.', type: 'default' };
   };
 
   const contextInfo = getRoleContext();
@@ -77,20 +92,16 @@ const Dashboard = () => {
   // Data states
   const [analytics, setAnalytics] = useState(null);
   const [appointments, setAppointments] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [providers, setProviders] = useState([]);
   const [pendingProviders, setPendingProviders] = useState([]);
   const [systemUsers, setSystemUsers] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
-  // Theme & Branding states
-  const [siteLogoInput, setSiteLogoInput] = useState('');
-  const [siteNameInput, setSiteNameInput] = useState('Schedulify');
-  const [primaryColorInput, setPrimaryColorInput] = useState('#ea580c');
-  const [secondaryColorInput, setSecondaryColorInput] = useState('#ffedd5');
-  const [themeModeInput, setThemeModeInput] = useState('light');
-
   // UI state
   const [loading, setLoading] = useState(true);
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
   const [notifDropdown, setNotifDropdown] = useState(false);
   const [rescheduleTarget, setRescheduleTarget] = useState(null); // appointment object
   const [rescheduleDate, setRescheduleDate] = useState('');
@@ -117,13 +128,34 @@ const Dashboard = () => {
   const [profSpec, setProfSpec] = useState('');
   const [profBio, setProfBio] = useState('');
   const [profAddress, setProfAddress] = useState('');
+  const [profPhone, setProfPhone] = useState('');
   const [profDob, setProfDob] = useState('');
   const [profAge, setProfAge] = useState('');
   const [profGender, setProfGender] = useState('');
-  const [profProgram, setProfProgram] = useState('');
-  const [profSection, setProfSection] = useState('');
-  const [profRegistrationNo, setProfRegistrationNo] = useState('');
+  const [profBusinessName, setProfBusinessName] = useState('');
+  const [profBusinessType, setProfBusinessType] = useState('An Individual');
+  const [profBusinessCategory, setProfBusinessCategory] = useState('');
+  const [profCity, setProfCity] = useState('');
+  const [profRegion, setProfRegion] = useState('');
+  const [profCountry, setProfCountry] = useState('India');
+  const [profZip, setProfZip] = useState('');
+  const [profTimezone, setProfTimezone] = useState('Asia/Calcutta (+05:30)');
+  const [profServices, setProfServices] = useState([
+    { title: 'General Appointment', duration: 30, price: 500 }
+  ]);
+  const [profBusinessHours, setProfBusinessHours] = useState([
+    { day: 'Monday', dayOfWeek: 1, isOpen: true, startTime: '09:00', endTime: '17:00' },
+    { day: 'Tuesday', dayOfWeek: 2, isOpen: true, startTime: '09:00', endTime: '17:00' },
+    { day: 'Wednesday', dayOfWeek: 3, isOpen: true, startTime: '09:00', endTime: '17:00' },
+    { day: 'Thursday', dayOfWeek: 4, isOpen: true, startTime: '09:00', endTime: '17:00' },
+    { day: 'Friday', dayOfWeek: 5, isOpen: true, startTime: '09:00', endTime: '17:00' },
+    { day: 'Saturday', dayOfWeek: 6, isOpen: false, startTime: '09:00', endTime: '17:00' },
+    { day: 'Sunday', dayOfWeek: 0, isOpen: false, startTime: '09:00', endTime: '17:00' },
+  ]);
+  const [profBookingInterests, setProfBookingInterests] = useState([]);
+  const [profPreferredTiming, setProfPreferredTiming] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
 
   // Admin Editing User States
   const [editingUser, setEditingUser] = useState(null);
@@ -131,12 +163,12 @@ const Dashboard = () => {
   const [editUserRole, setEditUserRole] = useState('Customer');
   const [editUserStatus, setEditUserStatus] = useState('Approved');
   const [editUserAddress, setEditUserAddress] = useState('');
+  const [editUserPhone, setEditUserPhone] = useState('');
   const [editUserDob, setEditUserDob] = useState('');
   const [editUserAge, setEditUserAge] = useState('');
   const [editUserGender, setEditUserGender] = useState('');
-  const [editUserProgram, setEditUserProgram] = useState('');
-  const [editUserSection, setEditUserSection] = useState('');
-  const [editUserRegistrationNo, setEditUserRegistrationNo] = useState('');
+  const [editUserBusinessName, setEditUserBusinessName] = useState('');
+  const [editUserCity, setEditUserCity] = useState('');
 
   // Fetch initial analytics, notifications, appointments
   const fetchData = async () => {
@@ -180,7 +212,7 @@ const Dashboard = () => {
       }
 
       // Role specific admin resources
-      if (['Admin', 'University Coordinator'].includes(user?.role)) {
+      if (['Admin'].includes(user?.role)) {
         // Fetch users
         const usersRes = await axios.get('/api/users');
         if (usersRes.data.success) {
@@ -209,27 +241,36 @@ const Dashboard = () => {
       setProfTitle(user.title || '');
       setProfSpec(user.specialization || '');
       setProfBio(user.bio || '');
-      setProfAddress(user.address || '');
+      setProfAddress(user.businessLocation?.address || user.address || '');
+      setProfPhone(user.phone || '');
       setProfDob(user.dob || '');
       setProfAge(user.age || '');
       setProfGender(user.gender || '');
-      setProfProgram(user.program || '');
-      setProfSection(user.section || '');
-      setProfRegistrationNo(user.registrationNo || '');
+      setProfBusinessName(user.businessName || '');
+      setProfBusinessType(user.businessType || 'An Individual');
+      setProfBusinessCategory(user.businessCategory || user.specialization || '');
+      setProfCity(user.businessLocation?.city || '');
+      setProfRegion(user.businessLocation?.region || '');
+      setProfCountry(user.businessLocation?.country || 'India');
+      setProfZip(user.businessLocation?.zip || '');
+      setProfTimezone(user.timezone || 'Asia/Calcutta (+05:30)');
+      if (Array.isArray(user.services) && user.services.length > 0) {
+        setProfServices(user.services);
+      } else {
+        setProfServices([{ title: 'General Appointment', duration: 30, price: 500 }]);
+      }
+      if (Array.isArray(user.businessHours) && user.businessHours.length > 0) {
+        setProfBusinessHours(user.businessHours);
+      }
+      setProfBookingInterests(Array.isArray(user.bookingInterests) ? user.bookingInterests : []);
+      setProfPreferredTiming(user.preferredTiming || '');
+      setAvatarFile(null);
+      setAvatarPreview(null);
     } else {
       navigate('/login');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
-
-  useEffect(() => {
-    if (theme) {
-      setSiteLogoInput(theme.siteLogo || '');
-      setSiteNameInput(theme.siteName || 'Schedulify');
-      setPrimaryColorInput(theme.primaryColor || '#ea580c');
-      setSecondaryColorInput(theme.secondaryColor || '#ffedd5');
-      setThemeModeInput(theme.themeMode || 'light');
-    }
-  }, [theme]);
 
   // Handle Log Out
   const handleLogout = async () => {
@@ -272,6 +313,54 @@ const Dashboard = () => {
     }
   };
 
+  const getAvatarUrl = (avatarPath) => {
+    if (!avatarPath) return '';
+    if (avatarPath.startsWith('http')) return avatarPath;
+    const base = (axios.defaults.baseURL || 'http://localhost:5000').replace(/\/$/, '');
+    const cleanPath = avatarPath.startsWith('/') ? avatarPath : `/${avatarPath}`;
+    return `${base}${cleanPath}`;
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        return toast.error('Avatar file size must be less than 2MB');
+      }
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleAddProfService = () => {
+    setProfServices([...profServices, { title: '', duration: 30, price: 0 }]);
+  };
+
+  const handleProfServiceChange = (index, field, value) => {
+    const updated = [...profServices];
+    updated[index][field] = value;
+    setProfServices(updated);
+  };
+
+  const handleRemoveProfService = (index) => {
+    if (profServices.length <= 1) {
+      return toast.warning('At least one service is required');
+    }
+    setProfServices(profServices.filter((_, i) => i !== index));
+  };
+
+  const handleProfHourToggle = (dayName) => {
+    setProfBusinessHours(
+      profBusinessHours.map((bh) => (bh.day === dayName ? { ...bh, isOpen: !bh.isOpen } : bh))
+    );
+  };
+
+  const handleProfHourTimeChange = (dayName, field, val) => {
+    setProfBusinessHours(
+      profBusinessHours.map((bh) => (bh.day === dayName ? { ...bh, [field]: val } : bh))
+    );
+  };
+
   // Handle update profile
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
@@ -282,17 +371,33 @@ const Dashboard = () => {
       fd.append('specialization', profSpec);
       fd.append('bio', profBio);
       fd.append('address', profAddress);
+      fd.append('phone', profPhone);
       fd.append('dob', profDob);
       fd.append('age', profAge);
       fd.append('gender', profGender);
-      fd.append('program', profProgram);
-      fd.append('section', profSection);
-      fd.append('registrationNo', profRegistrationNo);
+      fd.append('businessName', profBusinessName);
+      fd.append('businessType', profBusinessType);
+      fd.append('businessCategory', profBusinessCategory);
+      fd.append('timezone', profTimezone);
+      fd.append('businessLocation', JSON.stringify({
+        address: profAddress,
+        city: profCity,
+        region: profRegion,
+        country: profCountry,
+        zip: profZip,
+      }));
+      fd.append('services', JSON.stringify(profServices.filter((s) => s.title.trim() !== '')));
+      fd.append('businessHours', JSON.stringify(profBusinessHours));
+      fd.append('bookingInterests', JSON.stringify(profBookingInterests));
+      fd.append('preferredTiming', profPreferredTiming);
+
       if (avatarFile) {
         fd.append('avatar', avatarFile);
       }
 
       await updateProfile(fd);
+      setAvatarFile(null);
+      setAvatarPreview(null);
       toast.success('Profile details updated successfully');
     } catch (err) {
       toast.error(err.message || 'Failed to update profile');
@@ -305,13 +410,13 @@ const Dashboard = () => {
     setEditUserName(u.name || '');
     setEditUserRole(u.role || 'Customer');
     setEditUserStatus(u.status || 'Approved');
-    setEditUserAddress(u.address || '');
+    setEditUserAddress(u.address || u.businessLocation?.address || '');
+    setEditUserPhone(u.phone || '');
     setEditUserDob(u.dob || '');
     setEditUserAge(u.age || '');
     setEditUserGender(u.gender || '');
-    setEditUserProgram(u.program || '');
-    setEditUserSection(u.section || '');
-    setEditUserRegistrationNo(u.registrationNo || '');
+    setEditUserBusinessName(u.businessName || '');
+    setEditUserCity(u.businessLocation?.city || '');
   };
 
   const handleEditUserSubmit = async (e) => {
@@ -322,12 +427,12 @@ const Dashboard = () => {
         role: editUserRole,
         status: editUserStatus,
         address: editUserAddress,
+        phone: editUserPhone,
         dob: editUserDob,
         age: editUserAge ? parseInt(editUserAge) : null,
         gender: editUserGender,
-        program: editUserProgram,
-        section: editUserSection,
-        registrationNo: editUserRegistrationNo,
+        businessName: editUserBusinessName,
+        city: editUserCity,
       });
       if (res.data.success) {
         toast.success('User updated successfully');
@@ -355,6 +460,7 @@ const Dashboard = () => {
   // Appointment State changes: Accept/Decline/Complete/Cancel
   const handleAppointmentAction = async (id, action) => {
     try {
+      setActionLoadingId(id);
       const res = await axios.put(`/api/appointments/${id}/${action}`);
       if (res.data.success) {
         toast.success(`Appointment status updated: ${action.toUpperCase()}`);
@@ -362,32 +468,8 @@ const Dashboard = () => {
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action failed');
-    }
-  };
-
-  // Save Theme & Branding settings (Admin)
-  const handleSaveTheme = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await axios.put('/api/admin/settings', {
-        siteLogo: siteLogoInput,
-        siteName: siteNameInput,
-        primaryColor: primaryColorInput,
-        secondaryColor: secondaryColorInput,
-        themeMode: themeModeInput,
-      });
-      if (res.data.success) {
-        toast.success('Theme & Logo settings saved successfully!');
-        updateTheme({
-          siteLogo: siteLogoInput,
-          siteName: siteNameInput,
-          primaryColor: primaryColorInput,
-          secondaryColor: secondaryColorInput,
-          themeMode: themeModeInput,
-        });
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update theme settings');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -402,6 +484,7 @@ const Dashboard = () => {
   const submitAccept = async (e) => {
     e.preventDefault();
     try {
+      setIsAccepting(true);
       const res = await axios.put(`/api/appointments/${acceptTarget._id}/accept`, {
         meetingLink: acceptMeetLink,
       });
@@ -412,6 +495,8 @@ const Dashboard = () => {
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to accept appointment');
+    } finally {
+      setIsAccepting(false);
     }
   };
 
@@ -701,7 +786,7 @@ const Dashboard = () => {
             </button>
           )}
 
-          {['Admin', 'University Coordinator'].includes(user?.role) && (
+          {user?.role === 'Admin' && (
             <>
               <button
                 onClick={() => setActiveTab('admin-users')}
@@ -741,42 +826,50 @@ const Dashboard = () => {
             <PixelSettings size={16} color="#ea580c" /> Profile
           </button>
 
-          {user?.role === 'Admin' && (
-            <button
-              onClick={() => setActiveTab('theme')}
-              className={`btn-secondary ${activeTab === 'theme' ? 'active-tab' : ''}`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: '12px',
-                border: 'none',
-                background: activeTab === 'theme' ? 'rgba(255,255,255,0.8)' : 'transparent',
-                fontWeight: 600,
-                fontSize: '0.9rem'
-              }}
-            >
-              <PixelSettings size={16} color="#ea580c" /> Theme & Logo
-            </button>
-          )}
-
           {/* Profile Button */}
         </div>
 
         {/* Right Side: Profile Info & Log Out */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
+          <div
+            onClick={() => setActiveTab('settings')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+            title="Click to view and edit profile"
+          >
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                background: theme.secondaryColor || '#ffedd5',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '0.9rem',
+                overflow: 'hidden',
+                border: `2px solid ${theme.primaryColor || '#ea580c'}`,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                flexShrink: 0,
+              }}
+            >
               {user?.avatar ? (
-                <img src={user.avatar.startsWith('/') ? `${axios.defaults.baseURL}${user.avatar}` : user.avatar} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                <img
+                  src={getAvatarUrl(user.avatar)}
+                  alt="Avatar"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
               ) : (
-                user?.name.charAt(0).toUpperCase()
+                <span style={{ color: theme.primaryColor || '#ea580c' }}>
+                  {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                </span>
               )}
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{user?.name}</div>
-              <div style={{ fontSize: '0.7rem', color: '#636366' }}>{user?.role?.toLowerCase() =="customer"?"User":"Faculty"}</div>
+              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>{user?.name}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                {user?.role === 'Customer' ? 'Normal User' : user?.role === 'Provider' ? 'Administrator' : user?.role}
+              </div>
             </div>
           </div>
           <button onClick={handleLogout} className="btn-secondary" style={{ border: 'none', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '6px 12px', borderRadius: '10px', fontSize: '0.85rem' }}>
@@ -910,14 +1003,7 @@ const Dashboard = () => {
                 <div className="glass-card" style={{ background: '#e0f2fe' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ color: '#0369a1', fontWeight: 600 }}>
-                      {contextInfo.type === 'patient' && 'Total Consultations'}
-                      {contextInfo.type === 'doctor' && 'Total Patients Seen'}
-                      {contextInfo.type === 'student' && 'Total Advising Syncs'}
-                      {contextInfo.type === 'faculty' && 'Active Mapped Students'}
-                      {contextInfo.type === 'client' && 'Consultations Booked'}
-                      {contextInfo.type === 'officer' && 'Managed Alignments'}
-                      {contextInfo.type === 'admin' && 'System-wide Bookings'}
-                      {contextInfo.type === 'default' && 'Total Bookings'}
+                      {user?.role === 'Admin' ? 'System Bookings' : user?.role === 'Provider' ? 'Total Appointments' : 'My Bookings'}
                     </span>
                     <PixelAppointment size={20} color="#0369a1" />
                   </div>
@@ -927,14 +1013,7 @@ const Dashboard = () => {
                 <div className="glass-card" style={{ background: '#fef9c3' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ color: '#a16207', fontWeight: 600 }}>
-                      {contextInfo.type === 'patient' && 'Awaiting Doctor Approval'}
-                      {contextInfo.type === 'doctor' && 'Pending Clinic Appointments'}
-                      {contextInfo.type === 'student' && 'Awaiting Coordinator Sync'}
-                      {contextInfo.type === 'faculty' && 'Pending Advising Slots'}
-                      {contextInfo.type === 'client' && 'Pending Alignments'}
-                      {contextInfo.type === 'officer' && 'Pending Registrations'}
-                      {contextInfo.type === 'admin' && 'Pending Provider Actions'}
-                      {contextInfo.type === 'default' && 'Pending Actions'}
+                      {user?.role === 'Admin' ? 'Pending Providers' : user?.role === 'Provider' ? 'Pending Bookings' : 'Awaiting Confirmation'}
                     </span>
                     <PixelBell size={20} color="#a16207" />
                   </div>
@@ -944,14 +1023,7 @@ const Dashboard = () => {
                 <div className="glass-card" style={{ background: '#dcfce7' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ color: '#15803d', fontWeight: 600 }}>
-                      {contextInfo.type === 'patient' && 'Confirmed Bookings'}
-                      {contextInfo.type === 'doctor' && 'Approved Appointments'}
-                      {contextInfo.type === 'student' && 'Confirmed Syncs'}
-                      {contextInfo.type === 'faculty' && 'Faculty Consultations'}
-                      {contextInfo.type === 'client' && 'Approved Sessions'}
-                      {contextInfo.type === 'officer' && 'Confirmed Sessions'}
-                      {contextInfo.type === 'admin' && 'Approved System-wide'}
-                      {contextInfo.type === 'default' && 'Approved Sessions'}
+                      {user?.role === 'Admin' ? 'Confirmed System-wide' : user?.role === 'Provider' ? 'Confirmed Appointments' : 'Confirmed Bookings'}
                     </span>
                     <PixelCalendar size={20} color="#15803d" />
                   </div>
@@ -961,14 +1033,7 @@ const Dashboard = () => {
                 <div className="glass-card" style={{ background: '#f3e8ff' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ color: '#6b21a8', fontWeight: 600 }}>
-                      {contextInfo.type === 'patient' && 'Prescriptions Issued'}
-                      {contextInfo.type === 'doctor' && 'Completed Visits'}
-                      {contextInfo.type === 'student' && 'Meetings Attended'}
-                      {contextInfo.type === 'faculty' && 'Cohorts Completed'}
-                      {contextInfo.type === 'client' && 'Completed Advisory'}
-                      {contextInfo.type === 'officer' && 'Completed Alignments'}
-                      {contextInfo.type === 'admin' && 'Completed Bookings'}
-                      {contextInfo.type === 'default' && 'Completed'}
+                      {user?.role === 'Admin' ? 'Completed Bookings' : user?.role === 'Provider' ? 'Completed Sessions' : 'Completed Bookings'}
                     </span>
                     <PixelUser size={20} color="#6b21a8" />
                   </div>
@@ -986,8 +1051,8 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Provider Approvals (Admin/Coordinator only) */}
-              {['Admin', 'University Coordinator'].includes(user?.role) && pendingProviders.length > 0 && (
+              {/* Provider Approvals (Admin only) */}
+              {user?.role === 'Admin' && pendingProviders.length > 0 && (
                 <div className="glass-card" style={{ marginBottom: '40px' }}>
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '20px' }}>Pending Provider Registrations</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -1047,13 +1112,13 @@ const Dashboard = () => {
                             <span style={{ fontSize: '0.85rem', color: '#636366', fontWeight: 600 }}>{appt.date} • {appt.timeSlot.start} - {appt.timeSlot.end}</span>
                           </div>
                           <div style={{ fontWeight: 800, fontSize: '1.05rem', marginTop: '8px' }}>
-                            {['Admin', 'University Coordinator', 'Receptionist'].includes(user?.role) ? (
+                            {['Admin', 'Receptionist'].includes(user?.role) ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <div><strong style={{ color: '#636366' }}>Booked By:</strong> {appt.customer?.name || 'Customer'} ({appt.customer?.email || 'N/A'})</div>
-                                <div><strong style={{ color: '#ea580c' }}>Faculty:</strong> {appt.provider ? `${appt.provider.title || ''} ${appt.provider.name} (${appt.provider.specialization || 'Specialist'})` : 'N/A'}</div>
+                                <div><strong style={{ color: '#ea580c' }}>Provider:</strong> {appt.provider ? `${appt.provider.title || ''} ${appt.provider.name} (${appt.provider.specialization || 'Specialist'})` : 'N/A'}</div>
                               </div>
                             ) : user?.role === 'Customer' ? (
-                              <div><strong style={{ color: '#ea580c' }}>Faculty:</strong> {appt.provider ? `${appt.provider.title || ''} ${appt.provider.name} (${appt.provider.specialization || 'Specialist'})` : 'N/A'}</div>
+                              <div><strong style={{ color: '#ea580c' }}>Provider:</strong> {appt.provider ? `${appt.provider.title || ''} ${appt.provider.name} (${appt.provider.specialization || 'Specialist'})` : 'N/A'}</div>
                             ) : (
                               <div><strong style={{ color: '#636366' }}>Customer:</strong> {appt.customer?.name || 'Customer'} ({appt.customer?.email || 'N/A'})</div>
                             )}
@@ -1109,35 +1174,42 @@ const Dashboard = () => {
                           )}
                         </div>
 
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          {/* Provider/Staff Accept or Reject */}
-                          {appt.status === 'Pending' && ['Provider', 'Admin', 'University Coordinator', 'Receptionist'].includes(user?.role) && (
-                            <>
-                              <button onClick={() => openAcceptModal(appt)} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#34d399' }}>Accept</button>
-                              <button onClick={() => openRejectModal(appt)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#fca5a5', color: '#7f1d1d', border: 'none' }}>Reject</button>
-                            </>
-                          )}
+                        {actionLoadingId === appt._id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'rgba(255,255,255,0.7)', borderRadius: '12px' }}>
+                            <div className="skeleton-shimmer-box" style={{ width: '70px', height: '28px', borderRadius: '8px' }} />
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Updating...</span>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {/* Provider/Staff Accept or Reject */}
+                            {appt.status === 'Pending' && ['Provider', 'Admin', 'Receptionist'].includes(user?.role) && (
+                              <>
+                                <button onClick={() => openAcceptModal(appt)} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#34d399' }}>Accept</button>
+                                <button onClick={() => openRejectModal(appt)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#fca5a5', color: '#7f1d1d', border: 'none' }}>Reject</button>
+                              </>
+                            )}
 
-                          {/* Complete Action (Provider/Staff on Approved) */}
-                          {appt.status === 'Approved' && ['Provider', 'Admin', 'University Coordinator', 'Receptionist'].includes(user?.role) && (
-                            <button onClick={() => handleAppointmentAction(appt._id, 'complete')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#a78bfa' }}>Mark Completed</button>
-                          )}
+                            {/* Complete Action (Provider/Staff on Approved) */}
+                            {appt.status === 'Approved' && ['Provider', 'Admin', 'Receptionist'].includes(user?.role) && (
+                              <button onClick={() => handleAppointmentAction(appt._id, 'complete')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#a78bfa' }}>Mark Completed</button>
+                            )}
 
-                          {/* Notes Action */}
-                          {['Provider', 'Admin'].includes(user?.role) && (
-                            <button onClick={() => openMeetingNotes(appt)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Notes</button>
-                          )}
+                            {/* Notes Action */}
+                            {['Provider', 'Admin'].includes(user?.role) && (
+                              <button onClick={() => openMeetingNotes(appt)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Notes</button>
+                            )}
 
-                          {/* Reschedule Action: ONLY FOR NORMAL USER (CUSTOMER) ON REJECTED OR PENDING APPOINTMENTS */}
-                          {user?.role === 'Customer' && ['Rejected', 'Pending'].includes(appt.status) && (
-                            <button onClick={() => openReschedule(appt)} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#ea580c' }}>Reschedule Slot</button>
-                          )}
+                            {/* Reschedule Action: ONLY FOR NORMAL USER (CUSTOMER) ON REJECTED OR PENDING APPOINTMENTS */}
+                            {user?.role === 'Customer' && ['Rejected', 'Pending'].includes(appt.status) && (
+                              <button onClick={() => openReschedule(appt)} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', background: '#ea580c' }}>Reschedule Slot</button>
+                            )}
 
-                          {/* Cancel Action */}
-                          {['Pending', 'Approved'].includes(appt.status) && (
-                            <button onClick={() => handleAppointmentAction(appt._id, 'cancel')} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', border: 'none' }}>Cancel</button>
-                          )}
-                        </div>
+                            {/* Cancel Action */}
+                            {['Pending', 'Approved'].includes(appt.status) && (
+                              <button onClick={() => handleAppointmentAction(appt._id, 'cancel')} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', border: 'none' }}>Cancel</button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1226,7 +1298,7 @@ const Dashboard = () => {
             </motion.div>
           )}
 
-          {activeTab === 'admin-users' && ['Admin', 'University Coordinator'].includes(user?.role) && (
+          {activeTab === 'admin-users' && user?.role === 'Admin' && (
             <motion.div key="admin-users" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}>
               <div className="glass-card">
                 <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px' }}>Manage Users</h3>
@@ -1239,10 +1311,11 @@ const Dashboard = () => {
                           {u.email} • Role: <strong>{u.role}</strong> {u.role === 'Provider' && `• Status: ${u.status}`}
                         </div>
                         {u.address && <div style={{ fontSize: '0.75rem', color: '#8e8e93', marginTop: '3px' }}>Address: {u.address}</div>}
-                        {(u.dob || u.registrationNo) && (
-                          <div style={{ fontSize: '0.75rem', color: '#ea580c', marginTop: '3px' }}>
-                            {u.dob && `DOB: ${u.dob} • `}
-                            {u.registrationNo && `Reg No: ${u.registrationNo}`}
+                        {(u.phone || u.businessName || u.dob) && (
+                          <div style={{ fontSize: '0.75rem', color: primaryColor, marginTop: '3px' }}>
+                            {u.phone && `Phone: ${u.phone} `}
+                            {u.businessName && `• Business: ${u.businessName} `}
+                            {u.dob && `• DOB: ${u.dob}`}
                           </div>
                         )}
                       </div>
@@ -1259,42 +1332,235 @@ const Dashboard = () => {
 
           {activeTab === 'settings' && (
             <motion.div key="settings" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}>
-              <div className="glass-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px' }}>Update Profile Details</h3>
+              <div className="glass-card" style={{ maxWidth: '850px', margin: '0 auto', padding: '36px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '25px', flexWrap: 'wrap', gap: '15px' }}>
+                  <h3 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Profile & Account Settings</h3>
+                  <span
+                    style={{
+                      background: user?.role === 'Customer' ? '#e0f2fe' : secondaryColor,
+                      color: user?.role === 'Customer' ? '#0284c7' : primaryColor,
+                      padding: '5px 14px',
+                      borderRadius: '12px',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {user?.role === 'Customer' ? 'Normal User (Booker)' : user?.role === 'Provider' ? 'Administrator (Taking Bookings)' : user?.role}
+                  </span>
+                </div>
+
                 <form onSubmit={handleProfileUpdate}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  {/* Avatar Upload Banner */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '24px',
+                      padding: '20px',
+                      borderRadius: '20px',
+                      background: 'rgba(255, 255, 255, 0.65)',
+                      border: '1px solid var(--glass-border)',
+                      marginBottom: '30px',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: '88px',
+                        height: '88px',
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        border: `3px solid ${primaryColor}`,
+                        background: secondaryColor,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {avatarPreview ? (
+                        <img
+                          src={avatarPreview}
+                          alt="Avatar Preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : user?.avatar ? (
+                        <img
+                          src={getAvatarUrl(user.avatar)}
+                          alt="Avatar"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '2rem', fontWeight: 800, color: primaryColor }}>
+                          {user?.name?.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <h4 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '4px' }}>
+                        {user?.name}
+                      </h4>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '12px' }}>
+                        {user?.email} • {user?.phone || 'No phone added'}
+                      </p>
+                      <label
+                        className="btn-secondary"
+                        style={{
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 18px',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                        }}
+                      >
+                        <LuCamera size={16} color={primaryColor} /> Change Photo
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarChange}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
+                        Supported formats: JPG, PNG, GIF, WEBP up to 2MB
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* General / Contact Details */}
+                  <h4 style={{ margin: '20px 0 14px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.05rem', fontWeight: 700 }}>
+                    Personal & Contact Information
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
                     <div className="form-group">
                       <label className="form-label">Full Name</label>
-                      <input type="text" className="form-control" value={profName} onChange={(e) => setProfName(e.target.value)} required />
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={profName}
+                        onChange={(e) => setProfName(e.target.value)}
+                        required
+                      />
                     </div>
-
                     <div className="form-group">
-                      <label className="form-label">Profile Image (Avatar)</label>
-                      <input type="file" className="form-control" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} />
+                      <label className="form-label">Email Address</label>
+                      <input
+                        type="email"
+                        className="form-control"
+                        value={user?.email || ''}
+                        disabled
+                        style={{ opacity: 0.7, cursor: 'not-allowed' }}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Phone Number (SMS Notifications)</label>
+                      <input
+                        type="tel"
+                        className="form-control"
+                        placeholder="+91 98765 43210"
+                        value={profPhone}
+                        onChange={(e) => setProfPhone(e.target.value)}
+                      />
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Street Address</label>
-                    <input type="text" className="form-control" placeholder="e.g. 123 Metro Lane, New Delhi" value={profAddress} onChange={(e) => setProfAddress(e.target.value)} />
+                  {/* Location & Timezone */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '16px', marginTop: '6px' }}>
+                    <div className="form-group">
+                      <label className="form-label">Street Address</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Street address or suite"
+                        value={profAddress}
+                        onChange={(e) => setProfAddress(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">City</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="City"
+                        value={profCity}
+                        onChange={(e) => setProfCity(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Country</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={profCountry}
+                        onChange={(e) => setProfCountry(e.target.value)}
+                      />
+                    </div>
                   </div>
 
-                  {/* Context-based hospital fields (Healthcare department or Patient/Doctor role) */}
-                  <h4 style={{ margin: '25px 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.1rem', fontWeight: 700 }}>
-                    Demographics (Healthcare / General)
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label className="form-label">State / Region</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="State or Region"
+                        value={profRegion}
+                        onChange={(e) => setProfRegion(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Timezone</label>
+                      <select
+                        className="form-control"
+                        value={profTimezone}
+                        onChange={(e) => setProfTimezone(e.target.value)}
+                      >
+                        <option value="Asia/Calcutta (+05:30)">Asia/Calcutta (+05:30)</option>
+                        <option value="UTC">UTC (+00:00)</option>
+                        <option value="America/New_York (-05:00)">America/New York (-05:00)</option>
+                        <option value="Europe/London (+00:00)">Europe/London (+00:00)</option>
+                        <option value="Asia/Dubai (+04:00)">Asia/Dubai (+04:00)</option>
+                        <option value="Asia/Singapore (+08:00)">Asia/Singapore (+08:00)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Demographics */}
+                  <h4 style={{ margin: '25px 0 14px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.05rem', fontWeight: 700 }}>
+                    Demographics
                   </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                     <div className="form-group">
                       <label className="form-label">Date of Birth</label>
-                      <input type="date" className="form-control" value={profDob} onChange={(e) => setProfDob(e.target.value)} />
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={profDob}
+                        onChange={(e) => setProfDob(e.target.value)}
+                      />
                     </div>
                     <div className="form-group">
                       <label className="form-label">Age</label>
-                      <input type="number" className="form-control" placeholder="Years" value={profAge} onChange={(e) => setProfAge(e.target.value)} />
+                      <input
+                        type="number"
+                        className="form-control"
+                        placeholder="Years"
+                        value={profAge}
+                        onChange={(e) => setProfAge(e.target.value)}
+                      />
                     </div>
                     <div className="form-group">
                       <label className="form-label">Gender</label>
-                      <select className="form-control" value={profGender} onChange={(e) => setProfGender(e.target.value)}>
+                      <select
+                        className="form-control"
+                        value={profGender}
+                        onChange={(e) => setProfGender(e.target.value)}
+                      >
                         <option value="">Select Gender</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
@@ -1303,164 +1569,284 @@ const Dashboard = () => {
                     </div>
                   </div>
 
-                  {/* Context-based University fields */}
-                  <h4 style={{ margin: '25px 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.1rem', fontWeight: 700 }}>
-                    University / College Specifications
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.5fr', gap: '20px' }}>
-                    <div className="form-group">
-                      <label className="form-label">Academic Program</label>
-                      <input type="text" className="form-control" placeholder="e.g. B.Tech Computer Science" value={profProgram} onChange={(e) => setProfProgram(e.target.value)} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Section / Batch</label>
-                      <input type="text" className="form-control" placeholder="e.g. Section A" value={profSection} onChange={(e) => setProfSection(e.target.value)} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Registration / Roll No</label>
-                      <input type="text" className="form-control" placeholder="e.g. 2026-REG-0982" value={profRegistrationNo} onChange={(e) => setProfRegistrationNo(e.target.value)} />
-                    </div>
-                  </div>
-
+                  {/* =========================================================
+                      SERVICE PROVIDER SPECIFIC DETAILS (BOOKING TAKERS)
+                  ========================================================== */}
                   {user?.role === 'Provider' && (
                     <>
-                      <h4 style={{ margin: '25px 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.1rem', fontWeight: 700 }}>
-                        Provider Profile Details
+                      <h4 style={{ margin: '25px 0 14px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.05rem', fontWeight: 700 }}>
+                        Business Details & Scale
                       </h4>
-                      <div className="form-group">
-                        <label className="form-label">Professional Title</label>
-                        <input type="text" className="form-control" value={profTitle} onChange={(e) => setProfTitle(e.target.value)} />
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.5fr', gap: '16px' }}>
+                        <div className="form-group">
+                          <label className="form-label">Business Name</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="What is your Business Name?"
+                            value={profBusinessName}
+                            onChange={(e) => setProfBusinessName(e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Business Type</label>
+                          <select
+                            className="form-control"
+                            value={profBusinessType}
+                            onChange={(e) => setProfBusinessType(e.target.value)}
+                          >
+                            <option value="An Individual">An Individual (Solo)</option>
+                            <option value="Multi Staff Business">Multi Staff Business</option>
+                            <option value="Multi Location Business">Multi Location Business</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Service Category</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="e.g. Beauty & Wellness, Health..."
+                            value={profBusinessCategory}
+                            onChange={(e) => setProfBusinessCategory(e.target.value)}
+                          />
+                        </div>
                       </div>
+
                       <div className="form-group">
-                        <label className="form-label">Specialization</label>
-                        <input type="text" className="form-control" value={profSpec} onChange={(e) => setProfSpec(e.target.value)} />
+                        <label className="form-label">Bio / Professional Summary</label>
+                        <textarea
+                          className="form-control"
+                          placeholder="Brief description of your business or services..."
+                          value={profBio}
+                          onChange={(e) => setProfBio(e.target.value)}
+                          rows={2}
+                          style={{ resize: 'none' }}
+                        />
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">Biography</label>
-                        <textarea className="form-control" value={profBio} onChange={(e) => setProfBio(e.target.value)} rows={3} style={{ resize: 'none' }} />
+
+                      {/* Service Menu */}
+                      <h4 style={{ margin: '25px 0 14px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.05rem', fontWeight: 700 }}>
+                        Service Menu Offerings
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '3fr 1.2fr 1.2fr 40px', gap: '12px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', padding: '0 4px' }}>
+                          <span>Service Title</span>
+                          <span>Duration (min)</span>
+                          <span>Price (INR)</span>
+                          <span></span>
+                        </div>
+                        {profServices.map((svc, idx) => (
+                          <div key={idx} style={{ display: 'grid', gridTemplateColumns: '3fr 1.2fr 1.2fr 40px', gap: '12px', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="e.g. Consultation Session"
+                              value={svc.title}
+                              onChange={(e) => handleProfServiceChange(idx, 'title', e.target.value)}
+                            />
+                            <input
+                              type="number"
+                              className="form-control"
+                              placeholder="30"
+                              value={svc.duration}
+                              onChange={(e) => handleProfServiceChange(idx, 'duration', e.target.value)}
+                              min="5"
+                            />
+                            <input
+                              type="number"
+                              className="form-control"
+                              placeholder="500"
+                              value={svc.price}
+                              onChange={(e) => handleProfServiceChange(idx, 'price', e.target.value)}
+                              min="0"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveProfService(idx)}
+                              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <LuX size={18} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={handleAddProfService}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: primaryColor,
+                            fontWeight: 700,
+                            fontSize: '0.92rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            marginTop: '8px',
+                          }}
+                        >
+                          <LuPlus size={16} /> Add Service
+                        </button>
+                      </div>
+
+                      {/* Business Hours & Availability (Matching Reference Image) */}
+                      <h4 style={{ margin: '25px 0 14px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.05rem', fontWeight: 700 }}>
+                        Business Hours (Customer Booking Times)
+                      </h4>
+                      <div className="business-hours-list" style={{ margin: '14px 0 20px 0' }}>
+                        {profBusinessHours.map((bh) => (
+                          <div
+                            key={bh.day}
+                            className={`business-hour-item ${!bh.isOpen ? 'disabled' : ''}`}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '20px',
+                              padding: '12px 18px',
+                              borderRadius: '12px',
+                              background: bh.isOpen ? 'rgba(255, 255, 255, 0.75)' : 'rgba(248, 250, 252, 0.5)',
+                              border: bh.isOpen ? '1px solid rgba(226, 232, 240, 0.9)' : '1px solid rgba(241, 245, 249, 0.8)',
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            <div
+                              onClick={() => handleProfHourToggle(bh.day)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                width: '140px',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                fontWeight: 600,
+                                color: bh.isOpen ? 'var(--text-primary)' : '#94a3b8',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: bh.isOpen ? primaryColor : '#cbd5e1',
+                                }}
+                              >
+                                {bh.isOpen ? (
+                                  <LuCheck size={20} strokeWidth={2.8} />
+                                ) : (
+                                  <LuCircle size={19} strokeWidth={2} />
+                                )}
+                              </span>
+                              <span style={{ fontSize: '0.96rem' }}>{bh.day}</span>
+                            </div>
+
+                            {bh.isOpen ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <input
+                                  type="time"
+                                  className="form-control"
+                                  style={{
+                                    width: '135px',
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    background: '#fff',
+                                    border: '1px solid #cbd5e1',
+                                    fontWeight: 500,
+                                  }}
+                                  value={bh.startTime}
+                                  onChange={(e) => handleProfHourTimeChange(bh.day, 'startTime', e.target.value)}
+                                />
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500 }}>
+                                  To
+                                </span>
+                                <input
+                                  type="time"
+                                  className="form-control"
+                                  style={{
+                                    width: '135px',
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    background: '#fff',
+                                    border: '1px solid #cbd5e1',
+                                    fontWeight: 500,
+                                  }}
+                                  value={bh.endTime}
+                                  onChange={(e) => handleProfHourTimeChange(bh.day, 'endTime', e.target.value)}
+                                />
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => handleProfHourToggle(bh.day)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.45, cursor: 'pointer' }}
+                                title="Click to enable business hours for this day"
+                              >
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  style={{
+                                    width: '135px',
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    background: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    color: '#94a3b8',
+                                    cursor: 'pointer',
+                                  }}
+                                  placeholder="Start Time"
+                                  readOnly
+                                />
+                                <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                                  To
+                                </span>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  style={{
+                                    width: '135px',
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    background: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    color: '#94a3b8',
+                                    cursor: 'pointer',
+                                  }}
+                                  placeholder="End Time"
+                                  readOnly
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </>
                   )}
 
-                  <button type="submit" className="btn-primary" style={{ marginTop: '20px', width: '100%', padding: '14px' }}>
-                    Save Profile Details
-                  </button>
-                </form>
-              </div>
-            </motion.div>
-          )}
-
-          {activeTab === 'theme' && user?.role === 'Admin' && (
-            <motion.div key="theme" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}>
-              <div className="glass-card" style={{ maxWidth: '700px', margin: '0 auto', padding: '35px' }}>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '25px' }}>Site Logo & Color Palette Theme</h3>
-
-                <form onSubmit={handleSaveTheme}>
-                  {/* Site Title */}
-                  <div className="form-group" style={{ marginBottom: '20px' }}>
-                    <label className="form-label">Platform / Site Name</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="e.g. Schedulify"
-                      value={siteNameInput}
-                      onChange={(e) => setSiteNameInput(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  {/* Site Logo */}
-                  <div className="form-group" style={{ marginBottom: '25px' }}>
-                    <label className="form-label">Site Logo Image URL</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="https://example.com/my-custom-logo.png"
-                      value={siteLogoInput}
-                      onChange={(e) => setSiteLogoInput(e.target.value)}
-                    />
-                    <span style={{ fontSize: '0.75rem', color: '#636366', marginTop: '4px', display: 'block' }}>
-                      Enter a direct image URL for your brand logo. Leave empty to use default icon logo.
-                    </span>
-                  </div>
-
-                  {/* Preset Color Swatches */}
-                  <div className="form-group" style={{ marginBottom: '25px' }}>
-                    <label className="form-label">Primary Color Theme</label>
-                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '10px' }}>
-                      {[
-                        { name: 'Saffron Orange', primary: '#ea580c', secondary: '#ffedd5' },
-                        { name: 'Ocean Blue', primary: '#0284c7', secondary: '#e0f2fe' },
-                        { name: 'Emerald Green', primary: '#059669', secondary: '#d1fae5' },
-                        { name: 'Royal Violet', primary: '#7c3aed', secondary: '#f3e8ff' },
-                        { name: 'Crimson Rose', primary: '#e11d48', secondary: '#ffe4e6' },
-                      ].map((preset) => {
-                        const isSelected = primaryColorInput === preset.primary;
-                        return (
-                          <button
-                            key={preset.primary}
-                            type="button"
-                            onClick={() => {
-                              setPrimaryColorInput(preset.primary);
-                              setSecondaryColorInput(preset.secondary);
-                            }}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '10px 16px',
-                              borderRadius: '12px',
-                              border: isSelected ? `2px solid ${preset.primary}` : '1px solid var(--glass-border)',
-                              background: isSelected ? preset.secondary : 'rgba(255,255,255,0.7)',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              fontSize: '0.85rem',
-                              transition: 'all 0.2s',
-                            }}
-                          >
-                            <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: preset.primary, display: 'inline-block' }}></span>
-                            {preset.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Custom Hex Color Picker */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
-                    <div className="form-group">
-                      <label className="form-label">Custom Primary Color Code (Hex)</label>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input
-                          type="color"
-                          value={primaryColorInput}
-                          onChange={(e) => setPrimaryColorInput(e.target.value)}
-                          style={{ width: '45px', height: '42px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-                        />
+                  {/* =========================================================
+                      NORMAL USER SPECIFIC DETAILS
+                  ========================================================== */}
+                  {user?.role === 'Customer' && (
+                    <>
+                      <h4 style={{ margin: '25px 0 14px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px', fontSize: '1.05rem', fontWeight: 700 }}>
+                        Booking Preferences & Schedule
+                      </h4>
+                      <div className="form-group">
+                        <label className="form-label">Preferred Scheduling Times</label>
                         <input
                           type="text"
                           className="form-control"
-                          value={primaryColorInput}
-                          onChange={(e) => setPrimaryColorInput(e.target.value)}
+                          placeholder="e.g. Weekdays • Morning (9:00 AM - 12:00 PM)"
+                          value={profPreferredTiming}
+                          onChange={(e) => setProfPreferredTiming(e.target.value)}
                         />
                       </div>
-                    </div>
+                    </>
+                  )}
 
-                    <div className="form-group">
-                      <label className="form-label">Background Theme Format</label>
-                      <select
-                        className="form-control"
-                        value={themeModeInput}
-                        onChange={(e) => setThemeModeInput(e.target.value)}
-                      >
-                        <option value="light">Glassmorphism Light (Default)</option>
-                        <option value="dark">Dark Theme</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <button type="submit" className="btn-primary" style={{ width: '100%', padding: '14px', marginTop: '10px' }}>
-                    Save Theme & Branding
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{ marginTop: '25px', width: '100%', padding: '14px', fontSize: '1rem', fontWeight: 700 }}
+                  >
+                    Save Profile Details
                   </button>
                 </form>
               </div>
@@ -1486,11 +1872,16 @@ const Dashboard = () => {
                     value={acceptMeetLink}
                     onChange={(e) => setAcceptMeetLink(e.target.value)}
                     required
+                    disabled={isAccepting}
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
-                  <button type="submit" className="btn-primary" style={{ flex: 1, background: '#34d399' }}>Confirm & Accept</button>
-                  <button type="button" onClick={() => setAcceptTarget(null)} className="btn-secondary" style={{ flex: 1, border: 'none', background: 'rgba(0,0,0,0.05)' }}>Cancel</button>
+                  <button type="submit" className="btn-primary" style={{ flex: 1, background: '#34d399' }} disabled={isAccepting}>
+                    {isAccepting ? 'Confirming...' : 'Confirm & Accept'}
+                  </button>
+                  <button type="button" onClick={() => !isAccepting && setAcceptTarget(null)} className="btn-secondary" style={{ flex: 1, border: 'none', background: 'rgba(0,0,0,0.05)' }} disabled={isAccepting}>
+                    Cancel
+                  </button>
                 </div>
               </form>
             </motion.div>
@@ -1596,7 +1987,7 @@ const Dashboard = () => {
                     <option value="Customer">Customer</option>
                     <option value="Provider">Provider</option>
                     <option value="Receptionist">Receptionist</option>
-                    <option value="University Coordinator">University Coordinator</option>
+                    <option value="Admin">Admin</option>
                   </select>
                 </div>
                 <div className="form-group">
@@ -1635,20 +2026,20 @@ const Dashboard = () => {
                   </select>
                 </div>
 
-                <h4 style={{ margin: '20px 0 10px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px', fontSize: '1rem', fontWeight: 700 }}>University Info</h4>
-                <div className="form-group">
-                  <label className="form-label">Program</label>
-                  <input type="text" className="form-control" value={editUserProgram} onChange={(e) => setEditUserProgram(e.target.value)} />
-                </div>
+                <h4 style={{ margin: '20px 0 10px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px', fontSize: '1rem', fontWeight: 700 }}>Contact & Business Information</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div className="form-group">
-                    <label className="form-label">Section</label>
-                    <input type="text" className="form-control" value={editUserSection} onChange={(e) => setEditUserSection(e.target.value)} />
+                    <label className="form-label">Phone Number</label>
+                    <input type="tel" className="form-control" value={editUserPhone} onChange={(e) => setEditUserPhone(e.target.value)} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Registration No</label>
-                    <input type="text" className="form-control" value={editUserRegistrationNo} onChange={(e) => setEditUserRegistrationNo(e.target.value)} />
+                    <label className="form-label">City</label>
+                    <input type="text" className="form-control" value={editUserCity} onChange={(e) => setEditUserCity(e.target.value)} />
                   </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Business Name</label>
+                  <input type="text" className="form-control" value={editUserBusinessName} onChange={(e) => setEditUserBusinessName(e.target.value)} />
                 </div>
 
                 <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
@@ -1659,6 +2050,16 @@ const Dashboard = () => {
             </motion.div>
           </div>
         )}
+
+        {/* Smooth Glassmorphic Loading Screen during Appointment Confirmation / Meet generation */}
+        <ConfirmAppointmentLoadingScreen
+          isOpen={isAccepting}
+          title="Confirming Appointment..."
+          subtitle="Activating Google Meet session & dispatching confirmation emails..."
+          customerName={acceptTarget?.customer?.name}
+          date={acceptTarget?.date}
+          timeSlot={acceptTarget?.timeSlot ? `${acceptTarget.timeSlot.start} - ${acceptTarget.timeSlot.end}` : ''}
+        />
 
       </main>
     </div>

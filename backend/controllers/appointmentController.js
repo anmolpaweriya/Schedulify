@@ -245,7 +245,7 @@ exports.cancelAppointment = async (req, res) => {
     // Check if requester is customer, provider, or administrator
     const isCustomer = appointment.customer._id.toString() === req.user.id;
     const isProvider = appointment.provider._id.toString() === req.user.id;
-    const isAdmin = ['Admin', 'Receptionist', 'University Coordinator'].includes(req.user.role);
+    const isAdmin = ['Admin', 'Receptionist'].includes(req.user.role);
 
     if (!isCustomer && !isProvider && !isAdmin) {
       return res.status(403).json({ success: false, message: 'Not authorized to cancel this appointment' });
@@ -339,7 +339,7 @@ exports.rescheduleAppointment = async (req, res) => {
     // Access control
     const isCustomer = appointment.customer._id.toString() === req.user.id;
     const isProvider = appointment.provider._id.toString() === req.user.id;
-    const isAuth = ['Admin', 'Receptionist', 'University Coordinator'].includes(req.user.role);
+    const isAuth = ['Admin', 'Receptionist'].includes(req.user.role);
 
     if (!isCustomer && !isProvider && !isAuth) {
       return res.status(403).json({ success: false, message: 'Not authorized to reschedule this appointment' });
